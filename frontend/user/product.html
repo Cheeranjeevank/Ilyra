@@ -205,7 +205,7 @@ async function loadProduct() {
 
   try {
     const productsData = await fetchProducts();
-    const product = productsData.find(p => p.id === id);
+    const product = productsData.find(p => String(p.id) === String(id));
     currentProduct = product;
 
     if (product) {
@@ -488,7 +488,7 @@ function addToWishlist() {
 }
 
 async function loadRelated(currentId, productsData) {
-  const related = productsData.filter(p => p.id !== currentId).slice(0, 4);
+  const related = productsData.filter(p => String(p.id) !== String(currentId)).slice(0, 4);
   const container = document.getElementById("relatedProducts");
   
   if (related.length === 0) {
