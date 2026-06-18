@@ -149,12 +149,12 @@ app.post("/api/products", auth, async (req, res) => {
     return res.status(403).json({ message: "Admin only" });
   }
 
-  const { name, price, image, stock, category, sizes, colors } = req.body;
+  const { name, price, image, stock, category, sizes, colors, description, original_price, variants } = req.body;
 
   try {
     await pool.query(
-      "INSERT INTO products (name, price, image, stock, category, sizes, colors) VALUES ($1,$2,$3,$4,$5,$6,$7)",
-      [name, price, image, stock || 0, category || "", sizes || "", colors || ""]
+      "INSERT INTO products (name, price, image, stock, category, sizes, colors, description, original_price, variants) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+      [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]']
     );
     res.json({ success: true, message: "Product added" });
   } catch (err) {
@@ -169,16 +169,17 @@ app.put("/api/products/:id", auth, async (req, res) => {
     return res.status(403).json({ message: "Admin only" });
   }
 
-  const { name, price, image, stock, category, sizes, colors } = req.body;
+  const { name, price, image, stock, category, sizes, colors, description, original_price, variants } = req.body;
 
   try {
     await pool.query(
       `UPDATE products SET 
         name=$1, price=$2, image=$3, stock=$4, 
         category=$5, sizes=$6, colors=$7, 
+        description=$8, original_price=$9, variants=$10,
         updated_at=NOW() 
-       WHERE id=$8`,
-      [name, price, image, stock, category, sizes, colors, req.params.id]
+       WHERE id=$11`,
+      [name, price, image, stock, category, sizes, colors, description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', req.params.id]
     );
     res.json({ success: true, message: "Product updated" });
   } catch (err) {

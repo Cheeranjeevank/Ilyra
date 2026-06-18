@@ -194,6 +194,7 @@ const id = params.get("id");
 let currentProduct = null;
 let selectedSize = "";
 let selectedColor = "";
+let selectedVariantImage = null;
 let selectedQuantity = 1;
 
 async function loadProduct() {
@@ -211,12 +212,20 @@ async function loadProduct() {
       const sizes = (product.sizes || "S,M,L,XL").split(",");
       let colors = [];
       try {
-        colors = JSON.parse(product.colors || "[]");
+        colors = Array.isArray(product.variants) && product.variants.length > 0 
+          ? product.variants 
+          : JSON.parse(product.colors || "[]");
       } catch(e) { colors = []; }
 
       // Set defaults
-      selectedSize = sizes[0];
-      selectedColor = colors.length > 0 ? colors[0].name : "Standard";
+      selectedSize = sizes[0] || "M";
+      if (colors.length > 0) {
+        selectedColor = colors[0].color || colors[0].name;
+        selectedVariantImage = colors[0].image || product.image;
+      } else {
+        selectedColor = "Standard";
+        selectedVariantImage = product.image;
+      }
 
       document.getElementById("productDetails").innerHTML = `
         <div style="display:flex; gap:4rem; flex-wrap:wrap; align-items: flex-start;">
@@ -263,9 +272,12 @@ async function loadProduct() {
                 <div class="color-swatches">
                   ${colors.map((c, index) => `
                     <div class="swatch-container ${index === 0 ? 'active' : ''}" 
-                         onclick="selectColor('${c.name}', '${c.image}', this)">
-                      <div class="swatch" style="background: ${c.hex || '#ccc'};"></div>
-                      <span class="swatch-name">${c.name}</span>
+                         onclick="selectColor('${c.color || c.name}', '${c.image}', this)">
+                      ${c.image 
+                        ? `<img src="${c.image}" class="swatch" style="object-fit: cover;">`
+                        : `<div class="swatch" style="background: ${c.hex || '#ccc'};"></div>`
+                      }
+                      <span class="swatch-name">${c.color || c.name}</span>
                     </div>
                   `).join("")}
                 </div>
@@ -448,10 +460,11 @@ function selectSize(size, el) {
 
 function selectColor(color, image, el) {
   selectedColor = color;
+  selectedVariantImage = image && image !== "undefined" ? image : currentProduct.image;
   document.getElementById('colorNameDisplay').innerText = color;
   document.querySelectorAll('.swatch-container').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-  if (image) updateMainImage(image);
+  if (selectedVariantImage) updateMainImage(selectedVariantImage);
 }
 
 function updateQuantity(change) {
@@ -463,7 +476,7 @@ function handleAddToCart() {
   if(!currentProduct) return;
   
   for(let i=0; i < selectedQuantity; i++) {
-    addToCart(currentProduct, selectedSize, selectedColor);
+    addToCart(currentProduct, selectedSize, selectedColor, selectedVariantImage);
   }
 }
 

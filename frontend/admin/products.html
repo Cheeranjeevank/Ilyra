@@ -97,8 +97,12 @@
           <input id="name" placeholder="E.g. Premium Cotton T-Shirt">
         </div>
         <div>
-          <label>Price (₹)</label>
+          <label>Price (Offer Price) (₹)</label>
           <input id="price" type="number" placeholder="999">
+        </div>
+        <div>
+          <label>Original Price (MRP) (₹)</label>
+          <input id="original_price" type="number" placeholder="1299">
         </div>
         <div>
           <label>Category</label>
@@ -112,13 +116,32 @@
           <label>Sizes (Comma separated)</label>
           <input id="sizes" placeholder="S, M, L, XL">
         </div>
-        <div>
-          <label>Colors (Comma separated)</label>
-          <input id="colors" placeholder="Black, White, Blue">
+        <div style="grid-column: 1 / -1;">
+          <label>Description</label>
+          <textarea id="description" rows="3" placeholder="Premium quality fabric..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--surface-color); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; transition: var(--transition);"></textarea>
         </div>
         <div style="grid-column: 1 / -1;">
-          <label>Product Image</label>
+          <label>Main Product Image</label>
           <input type="file" id="imageFile">
+        </div>
+        
+        <!-- VARIANT MANAGER -->
+        <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
+          <h3 style="margin-bottom: 0.5rem;">Color Variants & Images</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Add specific images for different colors. Customers can click the colors to switch the image.</p>
+          <div id="variantsContainer" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;"></div>
+          
+          <div style="display: flex; gap: 1rem; align-items: flex-end; background: var(--surface-hover); padding: 1rem; border-radius: var(--border-radius-sm);">
+            <div style="flex: 1;">
+              <label>Color Name</label>
+              <input id="newVariantColor" placeholder="E.g. Navy Blue">
+            </div>
+            <div style="flex: 1;">
+              <label>Color Image</label>
+              <input type="file" id="newVariantImage">
+            </div>
+            <button class="btn btn-secondary" style="width: auto;" onclick="addVariant()">Add Variant</button>
+          </div>
         </div>
       </div>
       
@@ -167,6 +190,51 @@ document.getElementById("imageFile").addEventListener("change", function() {
 let products = [];
 let chartInstance = null;
 let editingId = null;
+let currentVariants = [];
+
+function addVariant() {
+  const colorInput = document.getElementById("newVariantColor");
+  const fileInput = document.getElementById("newVariantImage");
+  
+  if (!colorInput.value) {
+    showToast("Please enter a color name");
+    return;
+  }
+  
+  const file = fileInput.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      currentVariants.push({ color: colorInput.value, image: e.target.result });
+      colorInput.value = "";
+      fileInput.value = "";
+      renderVariants();
+    };
+    reader.readAsDataURL(file);
+  } else {
+    currentVariants.push({ color: colorInput.value, image: null });
+    colorInput.value = "";
+    renderVariants();
+  }
+}
+
+function removeVariant(index) {
+  currentVariants.splice(index, 1);
+  renderVariants();
+}
+
+function renderVariants() {
+  const container = document.getElementById("variantsContainer");
+  container.innerHTML = currentVariants.map((v, i) => `
+    <div style="display: flex; align-items: center; justify-content: space-between; background: var(--surface-color); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: var(--border-radius-sm);">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        ${v.image ? `<img src="${v.image}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;">` : `<div style="width:40px; height:40px; background:#ddd; border-radius:4px;"></div>`}
+        <span style="font-weight: 600;">${v.color}</span>
+      </div>
+      <button class="btn btn-secondary" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: #ef4444; color: #ef4444;" onclick="removeVariant(${i})">Remove</button>
+    </div>
+  `).join("");
+}
 
 async function loadProducts() {
   try {
@@ -197,10 +265,11 @@ function renderProducts() {
         <h3>${p.name}</h3>
         <p style="color: var(--accent-color); font-weight: 700;">₹${p.price}</p>
         
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
           <span class="badge ${badgeClass}">${badgeText}</span>
           <span style="font-size: 0.75rem; color: var(--text-muted);">${p.category}</span>
         </div>
+        ${p.original_price ? `<p style="color: var(--text-muted); font-size: 0.8rem; text-decoration: line-through;">MRP: ₹${p.original_price}</p>` : ''}
         
         <div style="display: flex; gap: 0.5rem; margin-top: auto;">
           <button class="btn btn-secondary" style="flex: 1; font-size: 0.875rem;" onclick='editProduct(${JSON.stringify(p).replace(/'/g, "&apos;")})'>Edit</button>
@@ -221,10 +290,14 @@ function editProduct(p) {
   document.getElementById("productId").disabled = true; // Cannot edit the Primary Key
   document.getElementById("name").value = p.name;
   document.getElementById("price").value = p.price;
+  document.getElementById("original_price").value = p.original_price || "";
+  document.getElementById("description").value = p.description || "";
   document.getElementById("category").value = p.category || "";
   document.getElementById("stock").value = p.stock || 0;
   document.getElementById("sizes").value = p.sizes || "";
-  document.getElementById("colors").value = p.colors || "";
+  
+  currentVariants = Array.isArray(p.variants) ? [...p.variants] : [];
+  renderVariants();
   
   const preview = document.getElementById("preview");
   preview.src = p.image;
@@ -243,12 +316,15 @@ function cancelEdit() {
   document.getElementById("productId").disabled = false;
   document.getElementById("name").value = "";
   document.getElementById("price").value = "";
+  document.getElementById("original_price").value = "";
+  document.getElementById("description").value = "";
   document.getElementById("category").value = "";
   document.getElementById("stock").value = "";
   document.getElementById("sizes").value = "";
-  document.getElementById("colors").value = "";
   document.getElementById("imageFile").value = "";
   document.getElementById("preview").style.display = "none";
+  currentVariants = [];
+  renderVariants();
 }
 
 async function saveProduct() {
@@ -256,10 +332,14 @@ async function saveProduct() {
   const productId = document.getElementById("productId").value;
   const name = document.getElementById("name").value;
   const price = document.getElementById("price").value;
+  const original_price = document.getElementById("original_price").value;
+  const description = document.getElementById("description").value;
   const stock = document.getElementById("stock").value;
   const category = document.getElementById("category").value;
   const sizes = document.getElementById("sizes").value;
-  const colors = document.getElementById("colors").value;
+  
+  // Create comma separated colors list from variants for backward compatibility
+  const colors = currentVariants.map(v => v.color).join(", ");
   const previewImg = document.getElementById("preview").src;
 
   if (!productId || !name || !price) {
@@ -280,7 +360,11 @@ async function saveProduct() {
         "Content-Type": "application/json",
         "Authorization": token
       },
-      body: JSON.stringify({ id: productId, name, price, image: previewImg, stock: parseInt(stock), category, sizes, colors })
+      body: JSON.stringify({ 
+        id: productId, name, price, original_price, description, 
+        image: previewImg, stock: parseInt(stock), 
+        category, sizes, colors, variants: currentVariants 
+      })
     });
 
     if (res.ok) {
