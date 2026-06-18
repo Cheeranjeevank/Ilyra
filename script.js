@@ -1,0 +1,358 @@
+const params = new URLSearchParams(window.location.search);
+const id = params.get("id");
+let currentProduct = null;
+let selectedSize = null;
+let selectedColor = null;
+let selectedVariantImage = null;
+let selectedQuantity = 1;
+let selectedPrice = null;
+
+async function loadProduct() {
+  if (!id) {
+    document.getElementById("productDetails").innerHTML = "<h2>Product not found</h2>";
+    return;
+  }
+
+  try {
+    const productsData = await fetchProducts();
+    const product = productsData.find(p => String(p.id) === String(id));
+    currentProduct = product;
+
+    if (product) {
+      let sizeVariants = [];
+      try {
+        sizeVariants = Array.isArray(product.size_prices) && product.size_prices.length > 0 
+          ? product.size_prices 
+          : (product.sizes || "S,M,L,XL").split(",").map(s => ({ size: s.trim(), price: null, original_price: null })).filter(s => s.size);
+      } catch(e) { 
+        sizeVariants = [{ size: "M", price: null, original_price: null }]; 
+      }
+
+      let colors = [];
+      try {
+        colors = Array.isArray(product.variants) && product.variants.length > 0 
+          ? product.variants 
+          : JSON.parse(product.colors || "[]");
+      } catch(e) { colors = []; }
+
+      // Set defaults
+      selectedSize = sizeVariants[0]?.size || "M";
+      selectedPrice = sizeVariants[0]?.price || product.price;
+      const initialOriginalPrice = sizeVariants[0]?.original_price || product.original_price;
+
+      if (colors.length > 0) {
+        selectedColor = colors[0].color || colors[0].name;
+        selectedVariantImage = colors[0].image || product.image;
+      } else {
+        selectedColor = "Standard";
+        selectedVariantImage = product.image;
+      }
+
+      document.getElementById("productDetails").innerHTML = `
+        <div class="product-split" style="display:flex; gap:4rem; flex-wrap:wrap; align-items: flex-start;">
+          <div class="product-image-col" style="flex: 1; min-width: 300px;">
+            <div class="card" style="padding: 0; overflow: hidden; border-radius: var(--border-radius-lg); position: sticky; top: 120px;">
+              <img id="mainImg" src="${selectedVariantImage || product.image || 'https://via.placeholder.com/600'}" 
+                   style="width: 100%; display: block; transition: var(--transition);">
+            </div>
+            <div id="imageGallery" style="display:flex; gap:1rem; margin-top:1.5rem; flex-wrap: wrap;">
+              ${(product.images || [product.image]).map(img => `
+                <div class="card" style="padding: 0.5rem; width: 80px; cursor: pointer;" onclick="updateMainImage('${img}')">
+                  <img src="${img}" style="width: 100%; border-radius: var(--border-radius-sm);">
+                </div>
+              `).join("")}
+            </div>
+          </div>
+
+          <div class="product-info-col" style="flex: 1; min-width: 400px;">
+            <span style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.75rem; font-weight: 700; color: var(--accent-color); margin-bottom: 0.5rem; display: block;">
+              ${product.category || 'Collection'}
+            </span>
+            <h1 style="font-size: 3rem; margin-bottom: 0.75rem; line-height: 1.1;">${product.name}</h1>
+            <div style="display: flex; gap: 1rem; align-items: baseline; margin-bottom: 2rem;">
+              <p id="displayPrice" style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary);">₹${selectedPrice}</p>
+              ${initialOriginalPrice ? `<p id="displayOriginalPrice" style="font-size: 1.25rem; font-weight: 500; color: var(--text-muted); text-decoration: line-through;">MRP: ₹${initialOriginalPrice}</p>` : `<p id="displayOriginalPrice" style="font-size: 1.25rem; font-weight: 500; color: var(--text-muted); text-decoration: line-through; display: none;"></p>`}
+            </div>
+            
+            <p style="margin-bottom: 2.5rem; color: var(--text-secondary); line-height: 1.8; font-size: 1.1rem;">
+              ${product.description || 'Experience the perfect blend of style and comfort with this premium ILYRA product. Designed for the modern individual who values quality and minimalism.'}
+            </p>
+
+            ${product.stock > 0 && product.stock < 20 ? `
+              <div class="amazon-alert">
+                <span>⚠️</span> Only ${product.stock} left in stock - order soon.
+              </div>
+            ` : ''}
+
+            <div class="delivery-badge" id="deliveryInfo">
+              Get it by <strong id="deliveryDate" style="color: var(--text-primary);">...</strong><br>
+              Order within <span class="countdown-timer" id="countdown">...</span>
+            </div>
+
+            <!-- COLOR SELECTOR -->
+            ${colors.length > 0 ? `
+              <div class="variant-selector">
+                <label class="variant-label">Color: <span id="colorNameDisplay" style="color: var(--text-primary);">${selectedColor}</span></label>
+                <div class="color-swatches">
+                  ${colors.map((c, index) => `
+                    <div class="swatch-container ${index === 0 ? 'active' : ''}" 
+                         onclick="selectColor('${c.color || c.name}', '${c.image}', this)">
+                      ${c.image 
+                        ? `<img src="${c.image}" class="swatch" style="object-fit: cover;">`
+                        : `<div class="swatch" style="background: ${c.hex || '#ccc'};"></div>`
+                      }
+                      <span class="swatch-name">${c.color || c.name}</span>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- SIZE SELECTOR -->
+            <div class="variant-selector">
+              <label class="variant-label">Select Size</label>
+              <div class="size-chips">
+                ${sizeVariants.map((sv, index) => `
+                  <div class="size-chip ${index === 0 ? 'active' : ''}" onclick="selectSize('${sv.size}', ${sv.price || 'null'}, ${sv.original_price || 'null'}, this)">${sv.size}</div>
+                `).join("")}
+              </div>
+            </div>
+
+            <div class="variant-selector">
+              <label class="variant-label">Quantity</label>
+              <div class="quantity-input">
+                <button class="qty-btn" onclick="updateQuantity(-1)">-</button>
+                <span id="qtyDisplay">1</span>
+                <button class="qty-btn" onclick="updateQuantity(1)">+</button>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 3rem;">
+              ${product.stock === 0 ? `
+                <button class="btn" style="background: var(--text-muted); cursor: not-allowed; flex: 2;" disabled>
+                  Out of Stock
+                </button>
+              ` : `
+                <button class="btn" style="flex: 2; height: 60px; font-size: 1.1rem;" onclick="handleAddToCart()">
+                  Add to Cart
+                </button>
+              `}
+              <button class="btn btn-secondary" style="flex: 1; height: 60px;" onclick="addToWishlist()">
+                ♡
+              </button>
+            </div>
+            
+            <div class="reviews-split" style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-color); display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+              <div>
+                <p style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Availability</p>
+                <p style="font-weight: 600; font-size: 0.9rem;">${product.stock > 0 ? 'In Stock' : 'Out of Stock'}</p>
+              </div>
+              <div>
+                <p style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Free Shipping</p>
+                <p style="font-weight: 600; font-size: 0.9rem;">On orders over ₹999</p>
+              </div>
+            </div>
+
+            <div style="margin-top: 2rem; display: flex; gap: 2rem; opacity: 0.7;">
+              <div style="text-align: center;">
+                <span style="font-size: 1.5rem;">🔒</span>
+                <p style="font-size: 0.7rem; font-weight: 600; margin-top: 0.25rem;">SECURE<br>PAYMENT</p>
+              </div>
+              <div style="text-align: center;">
+                <span style="font-size: 1.5rem;">🚚</span>
+                <p style="font-size: 0.7rem; font-weight: 600; margin-top: 0.25rem;">FAST<br>DELIVERY</p>
+              </div>
+              <div style="text-align: center;">
+                <span style="font-size: 1.5rem;">♻️</span>
+                <p style="font-size: 0.7rem; font-weight: 600; margin-top: 0.25rem;">ECO<br>FRIENDLY</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section style="margin-top: 6rem; border-top: 1px solid var(--border-color); padding-top: 4rem;">
+          <h2 class="mb-4">Customer Reviews</h2>
+          <div class="reviews-split" style="display: grid; grid-template-columns: 1fr 2fr; gap: 4rem;">
+            <div>
+              <div style="font-size: 3rem; font-weight: 800; margin-bottom: 0.5rem;">4.8 <span style="font-size: 1.5rem; color: var(--text-muted);">/ 5</span></div>
+              <div class="stars" style="font-size: 1.5rem;">★★★★★</div>
+              <p style="font-size: 0.875rem; color: var(--text-muted);">Based on 124 verified reviews</p>
+              
+              <div style="margin-top: 2rem;">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                  <span style="font-size: 0.875rem; min-width: 40px;">5 Star</span>
+                  <div style="flex: 1; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 85%; height: 100%; background: #ffa41c;"></div>
+                  </div>
+                  <span style="font-size: 0.875rem; width: 30px;">85%</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                  <span style="font-size: 0.875rem; min-width: 40px;">4 Star</span>
+                  <div style="flex: 1; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 10%; height: 100%; background: #ffa41c;"></div>
+                  </div>
+                  <span style="font-size: 0.875rem; width: 30px;">10%</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                  <span style="font-size: 0.875rem; min-width: 40px;">3 Star</span>
+                  <div style="flex: 1; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 5%; height: 100%; background: #ffa41c;"></div>
+                  </div>
+                  <span style="font-size: 0.875rem; width: 30px;">5%</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="review-card">
+                <div class="stars">★★★★★</div>
+                <p style="font-weight: 700; margin-bottom: 0.5rem;">Absolutely incredible quality!</p>
+                <p style="font-size: 0.875rem; margin-bottom: 1rem;">"The attention to detail and the fit of this product exceeded all my expectations. It feels premium and looks stunning in person. Definitely worth every penny."</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 0.875rem; font-weight: 600;">Arjun K.</span>
+                  <span class="verified-badge">✓ Verified Purchase</span>
+                </div>
+              </div>
+              <div class="review-card">
+                <div class="stars">★★★★★</div>
+                <p style="font-weight: 700; margin-bottom: 0.5rem;">Perfect minimalist aesthetic</p>
+                <p style="font-size: 0.875rem; margin-bottom: 1rem;">"Fast delivery and the packaging was super premium. The color is exactly like the photos. Will be ordering more from ILYRA soon!"</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 0.875rem; font-weight: 600;">Sarah M.</span>
+                  <span class="verified-badge">✓ Verified Purchase</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      `;
+      loadRelated(product.id, productsData);
+      startCountdown();
+    } else {
+      document.getElementById("productDetails").innerHTML = "<h2>Product not found</h2>";
+    }
+  } catch (err) {
+    console.error(err);
+    document.getElementById("productDetails").innerHTML = "<h2>Error loading product</h2>";
+  }
+}
+
+function startCountdown() {
+  const deliveryDateEl = document.getElementById('deliveryDate');
+  const countdownEl = document.getElementById('countdown');
+  
+  if (!deliveryDateEl || !countdownEl) return;
+
+  // Set Delivery Date (3 days from now)
+  const delivery = new Date();
+  delivery.setDate(delivery.getDate() + 3);
+  const options = { weekday: 'long', month: 'short', day: 'numeric' };
+  deliveryDateEl.innerText = delivery.toLocaleDateString('en-US', options);
+
+  // Countdown to midnight for "Tomorrow Delivery"
+  function updateTimer() {
+    const now = new Date();
+    const tonight = new Date();
+    tonight.setHours(24, 0, 0, 0);
+    
+    const diff = tonight - now;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const secs = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    countdownEl.innerText = `${hours}h ${mins}m ${secs}s`;
+  }
+
+  updateTimer();
+  setInterval(updateTimer, 1000);
+}
+
+function updateMainImage(src) {
+  const mainImg = document.getElementById('mainImg');
+  mainImg.style.opacity = '0';
+  setTimeout(() => {
+    mainImg.src = src;
+    mainImg.style.opacity = '1';
+  }, 200);
+}
+
+function selectSize(size, overridePrice, overrideOriginalPrice, el) {
+  selectedSize = size;
+  selectedPrice = overridePrice || currentProduct.price;
+  
+  document.getElementById('displayPrice').innerText = '₹' + selectedPrice;
+  const origPriceEl = document.getElementById('displayOriginalPrice');
+  const origPrice = overrideOriginalPrice || currentProduct.original_price;
+  if (origPrice) {
+    origPriceEl.innerText = 'MRP: ₹' + origPrice;
+    origPriceEl.style.display = 'block';
+  } else {
+    origPriceEl.style.display = 'none';
+  }
+
+  document.querySelectorAll('.size-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function selectColor(color, image, el) {
+  selectedColor = color;
+  selectedVariantImage = image && image !== "undefined" ? image : currentProduct.image;
+  document.getElementById('colorNameDisplay').innerText = color;
+  document.querySelectorAll('.swatch-container').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  if (selectedVariantImage) updateMainImage(selectedVariantImage);
+}
+
+function updateQuantity(change) {
+  selectedQuantity = Math.max(1, selectedQuantity + change);
+  document.getElementById('qtyDisplay').innerText = selectedQuantity;
+}
+
+function handleAddToCart() {
+  if(!currentProduct) return;
+  
+  for(let i=0; i < selectedQuantity; i++) {
+    addToCart(currentProduct, selectedSize, selectedColor, selectedVariantImage, selectedPrice);
+  }
+  
+  showToast("Added to cart!");
+  updateCartCount();
+}
+
+function addToWishlist() {
+    showToast("Added to wishlist!");
+}
+
+async function loadRelated(currentId, productsData) {
+  const related = productsData.filter(p => String(p.id) !== String(currentId)).slice(0, 4);
+  const container = document.getElementById("relatedProducts");
+  
+  if (related.length === 0) {
+    document.getElementById("related").style.display = "none";
+    return;
+  }
+
+  container.innerHTML = related.map(p => `
+    <div class="card fade-in">
+      <img src="${p.image}" alt="${p.name}">
+      <h3>${p.name}</h3>
+      <p>₹${p.price}</p>
+      <button class="btn btn-secondary" onclick="location.href='product.html?id=${p.id}'">View Product</button>
+    </div>
+  `).join("");
+}
+
+loadProduct();
+
+// Hover effect for main image
+document.addEventListener("mouseover", e => {
+  if (e.target.id === "mainImg") {
+    e.target.style.transform = "scale(1.05)";
+  }
+});
+
+document.addEventListener("mouseout", e => {
+  if (e.target.id === "mainImg") {
+    e.target.style.transform = "scale(1)";
+  }
+});

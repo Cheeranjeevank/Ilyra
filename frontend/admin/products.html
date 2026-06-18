@@ -426,7 +426,8 @@ async function saveProduct() {
   
   const sizes = currentSizeVariants.map(v => v.size).join(", ");
   const colors = currentVariants.map(v => v.color).join(", ");
-  const previewImg = document.getElementById("preview").src;
+  const preview = document.getElementById("preview");
+  const previewImg = preview.style.display !== "none" ? preview.src : "";
 
   if (!productId || !name || !price) {
     showToast("Please provide at least a Product ID, Name, and Price.");
