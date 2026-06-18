@@ -116,10 +116,6 @@
           <label>Stock Quantity</label>
           <input id="stock" type="number" placeholder="50">
         </div>
-        <div>
-          <label>Search Keywords</label>
-          <input id="keywords" placeholder="E.g. summer, trendy, party">
-        </div>
         <div style="grid-column: 1 / -1;">
           <label>Description</label>
           <textarea id="description" rows="3" placeholder="Premium quality fabric..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--surface-color); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; transition: var(--transition);"></textarea>
@@ -376,7 +372,6 @@ function editProduct(p) {
   document.getElementById("description").value = p.description || "";
   document.getElementById("category").value = p.category || "";
   document.getElementById("stock").value = p.stock || 0;
-  document.getElementById("keywords").value = p.keywords || "";
   
   currentVariants = Array.isArray(p.variants) ? [...p.variants] : [];
   currentSizeVariants = Array.isArray(p.size_prices) ? [...p.size_prices] : [];
@@ -409,7 +404,6 @@ function cancelEdit() {
   document.getElementById("description").value = "";
   document.getElementById("category").value = "";
   document.getElementById("stock").value = "";
-  document.getElementById("keywords").value = "";
   document.getElementById("categoryImageFile").value = "";
   document.getElementById("imageFile").value = "";
   document.getElementById("preview").style.display = "none";
@@ -429,7 +423,6 @@ async function saveProduct() {
   const description = document.getElementById("description").value;
   const stock = document.getElementById("stock").value;
   const category = document.getElementById("category").value;
-  const keywords = document.getElementById("keywords").value;
   
   const sizes = currentSizeVariants.map(v => v.size).join(", ");
   const colors = currentVariants.map(v => v.color).join(", ");
@@ -458,8 +451,7 @@ async function saveProduct() {
         image: previewImg, stock: parseInt(stock), 
         category, category_image: categoryImageBase64,
         sizes, colors, variants: currentVariants,
-        size_prices: currentSizeVariants,
-        keywords
+        size_prices: currentSizeVariants
       })
     });
 

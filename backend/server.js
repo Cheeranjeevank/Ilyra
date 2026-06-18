@@ -197,7 +197,7 @@ app.post("/api/products", auth, async (req, res) => {
     return res.status(403).json({ message: "Admin only" });
   }
 
-  const { name, price, image, stock, category, category_image, sizes, colors, description, original_price, variants, size_prices, keywords } = req.body;
+  const { name, price, image, stock, category, category_image, sizes, colors, description, original_price, variants, size_prices } = req.body;
 
   try {
     if (category && category_image) {
@@ -210,8 +210,8 @@ app.post("/api/products", auth, async (req, res) => {
     }
 
     await pool.query(
-      "INSERT INTO products (name, price, image, stock, category, sizes, colors, description, original_price, variants, size_prices, keywords) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",
-      [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]', keywords || ""]
+      "INSERT INTO products (name, price, image, stock, category, sizes, colors, description, original_price, variants, size_prices) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+      [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]']
     );
     res.json({ success: true, message: "Product added" });
   } catch (err) {
@@ -226,7 +226,7 @@ app.put("/api/products/:id", auth, async (req, res) => {
     return res.status(403).json({ message: "Admin only" });
   }
 
-  const { name, price, image, stock, category, category_image, sizes, colors, description, original_price, variants, size_prices, keywords } = req.body;
+  const { name, price, image, stock, category, category_image, sizes, colors, description, original_price, variants, size_prices } = req.body;
 
   try {
     if (category && category_image) {
@@ -242,10 +242,10 @@ app.put("/api/products/:id", auth, async (req, res) => {
       `UPDATE products SET 
         name=$1, price=$2, image=$3, stock=$4, 
         category=$5, sizes=$6, colors=$7, 
-        description=$8, original_price=$9, variants=$10, size_prices=$11, keywords=$12,
+        description=$8, original_price=$9, variants=$10, size_prices=$11,
         updated_at=NOW() 
-       WHERE id=$13`,
-      [name, price, image, stock, category, sizes, colors, description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]', keywords || "", req.params.id]
+       WHERE id=$12`,
+      [name, price, image, stock, category, sizes, colors, description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]', req.params.id]
     );
     res.json({ success: true, message: "Product updated" });
   } catch (err) {
