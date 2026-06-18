@@ -433,6 +433,11 @@ async function saveProduct() {
     return;
   }
 
+  const submitBtn = document.getElementById("submitBtn");
+  const originalText = submitBtn.innerText;
+  submitBtn.disabled = true;
+  submitBtn.innerText = "Saving...";
+
   const url = editingId 
     ? `${CONFIG.API_URL}/api/products/${editingId}`
     : `${CONFIG.API_URL}/api/products`;
@@ -460,11 +465,14 @@ async function saveProduct() {
       cancelEdit();
       loadProducts();
     } else {
-      showToast("Operation failed. Try again.");
+      showToast("Error saving product.");
     }
   } catch (err) {
-    console.error(err);
-    showToast("Server error. Try again.");
+    console.error("Save product error:", err);
+    showToast("Error saving product.");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerText = editingId ? "Update Product" : "Add Product";
   }
 }
 
