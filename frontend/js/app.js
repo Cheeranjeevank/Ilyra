@@ -280,14 +280,22 @@ async function fetchProducts() {
   }
 }
 
-const CATEGORY_IMAGES = {
-  "T-Shirts": "../assets/categories/tshirts.png",
-  "Outerwear": "../assets/categories/outerwear.png",
-  "Formal Wear": "../assets/categories/formal.png",
-  "Activewear": "../assets/categories/activewear.png"
-};
+let CATEGORY_IMAGES = {};
 
-function renderCategories() {
+async function fetchCategoryImages() {
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/api/categories`);
+    const data = await res.json();
+    data.forEach(cat => {
+      CATEGORY_IMAGES[cat.name] = cat.image;
+    });
+  } catch (err) {
+    console.error("Failed to fetch category images", err);
+  }
+}
+
+async function renderCategories() {
+  await fetchCategoryImages();
   const container = document.getElementById("products");
   if (!container) return;
 

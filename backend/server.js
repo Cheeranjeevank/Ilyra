@@ -135,9 +135,57 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-// ======================
-// PRODUCTS
-// ======================
+// ================= CATEGORIES API =================
+
+app.get("/api/categories", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM categories ORDER BY name ASC");
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch categories" });
+  }
+});
+
+app.post("/api/categories", auth, async (req, res) => {
+  if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied" });
+  
+  const { name, image } = req.body;
+  try {
+    const existing = await pool.query("SELECT * FROM categories WHERE name = $1", [name]);
+    let result;
+    if (existing.rows.length > 0) {
+      result = await pool.query(
+        "UPDATE categories SET image = $1 WHERE name = $2 RETURNING *",
+        [image, name]
+      );
+    } else {
+      result = await pool.query(
+        "INSERT INTO categories (name, image) VALUES ($1, $2) RETURNING *",
+        [name, image]
+      );
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save category" });
+  }
+});
+
+app.delete("/api/categories/:name", auth, async (req, res) => {
+  if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied" });
+  
+  const { name } = req.params;
+  try {
+    await pool.query("DELETE FROM categories WHERE name = $1", [name]);
+    res.json({ message: "Category deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete category" });
+  }
+});
+
+// ================= PRODUCTS API ======================
 app.get("/api/products", async (req, res) => {
   const result = await pool.query("SELECT * FROM products ORDER BY created_at DESC");
   res.json(result.rows);
