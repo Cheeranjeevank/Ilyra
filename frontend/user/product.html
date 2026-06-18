@@ -228,8 +228,8 @@ async function loadProduct() {
       }
 
       document.getElementById("productDetails").innerHTML = `
-        <div style="display:flex; gap:4rem; flex-wrap:wrap; align-items: flex-start;">
-          <div style="flex: 1; min-width: 300px;">
+        <div class="product-split" style="display:flex; gap:4rem; flex-wrap:wrap; align-items: flex-start;">
+          <div class="product-image-col" style="flex: 1; min-width: 300px;">
             <div class="card" style="padding: 0; overflow: hidden; border-radius: var(--border-radius-lg); position: sticky; top: 120px;">
               <img id="mainImg" src="${selectedVariantImage || product.image || 'https://via.placeholder.com/600'}" 
                    style="width: 100%; display: block; transition: var(--transition);">
@@ -243,7 +243,7 @@ async function loadProduct() {
             </div>
           </div>
 
-          <div style="flex: 1; min-width: 400px;">
+          <div class="product-info-col" style="flex: 1; min-width: 400px;">
             <span style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.75rem; font-weight: 700; color: var(--accent-color); margin-bottom: 0.5rem; display: block;">
               ${product.category || 'Collection'}
             </span>
@@ -321,7 +321,7 @@ async function loadProduct() {
               </button>
             </div>
             
-            <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-color); display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div class="reviews-split" style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-color); display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
               <div>
                 <p style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Availability</p>
                 <p style="font-weight: 600; font-size: 0.9rem;">${product.stock > 0 ? 'In Stock' : 'Out of Stock'}</p>
@@ -351,7 +351,7 @@ async function loadProduct() {
 
         <section style="margin-top: 6rem; border-top: 1px solid var(--border-color); padding-top: 4rem;">
           <h2 class="mb-4">Customer Reviews</h2>
-          <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 4rem;">
+          <div class="reviews-split" style="display: grid; grid-template-columns: 1fr 2fr; gap: 4rem;">
             <div>
               <div style="font-size: 3rem; font-weight: 800; margin-bottom: 0.5rem;">4.8 <span style="font-size: 1.5rem; color: var(--text-muted);">/ 5</span></div>
               <div class="stars" style="font-size: 1.5rem;">★★★★★</div>
