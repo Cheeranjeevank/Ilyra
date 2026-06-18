@@ -3,7 +3,7 @@ const CONFIG = {
   // If running locally, use localhost. If on Netlify/Cloud, use the live backend placeholder.
   API_URL: window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
     ? "http://localhost:5001" 
-    : "https://ilyra-backend.onrender.com"
+    : "https://ilyra.onrender.com"
 };
 
 // ================= PARTICLES BACKGROUND =================
