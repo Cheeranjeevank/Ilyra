@@ -1,0 +1,7 @@
+<div id="out"></div>
+<script>
+  const p = {"name": "Test", "description": "It's a test! \n newline \"quote\" 'single'"};
+  const html = `<button id="btn" onclick='console.log(${JSON.stringify(p).replace(/'/g, "&apos;")})'>Click me</button>`;
+  document.getElementById("out").innerHTML = html;
+  setTimeout(() => document.getElementById("btn").click(), 100);
+</script>
