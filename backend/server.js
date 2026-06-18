@@ -197,12 +197,21 @@ app.post("/api/products", auth, async (req, res) => {
     return res.status(403).json({ message: "Admin only" });
   }
 
-  const { name, price, image, stock, category, sizes, colors, description, original_price, variants } = req.body;
+  const { name, price, image, stock, category, category_image, sizes, colors, description, original_price, variants, size_prices } = req.body;
 
   try {
+    if (category && category_image) {
+      const existing = await pool.query("SELECT * FROM categories WHERE name = $1", [category]);
+      if (existing.rows.length > 0) {
+        await pool.query("UPDATE categories SET image = $1 WHERE name = $2", [category_image, category]);
+      } else {
+        await pool.query("INSERT INTO categories (name, image) VALUES ($1, $2)", [category, category_image]);
+      }
+    }
+
     await pool.query(
-      "INSERT INTO products (name, price, image, stock, category, sizes, colors, description, original_price, variants) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
-      [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]']
+      "INSERT INTO products (name, price, image, stock, category, sizes, colors, description, original_price, variants, size_prices) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+      [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]']
     );
     res.json({ success: true, message: "Product added" });
   } catch (err) {
@@ -217,17 +226,26 @@ app.put("/api/products/:id", auth, async (req, res) => {
     return res.status(403).json({ message: "Admin only" });
   }
 
-  const { name, price, image, stock, category, sizes, colors, description, original_price, variants } = req.body;
+  const { name, price, image, stock, category, category_image, sizes, colors, description, original_price, variants, size_prices } = req.body;
 
   try {
+    if (category && category_image) {
+      const existing = await pool.query("SELECT * FROM categories WHERE name = $1", [category]);
+      if (existing.rows.length > 0) {
+        await pool.query("UPDATE categories SET image = $1 WHERE name = $2", [category_image, category]);
+      } else {
+        await pool.query("INSERT INTO categories (name, image) VALUES ($1, $2)", [category, category_image]);
+      }
+    }
+
     await pool.query(
       `UPDATE products SET 
         name=$1, price=$2, image=$3, stock=$4, 
         category=$5, sizes=$6, colors=$7, 
-        description=$8, original_price=$9, variants=$10,
+        description=$8, original_price=$9, variants=$10, size_prices=$11,
         updated_at=NOW() 
-       WHERE id=$11`,
-      [name, price, image, stock, category, sizes, colors, description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', req.params.id]
+       WHERE id=$12`,
+      [name, price, image, stock, category, sizes, colors, description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]', req.params.id]
     );
     res.json({ success: true, message: "Product updated" });
   } catch (err) {

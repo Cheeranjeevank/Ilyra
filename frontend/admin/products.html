@@ -65,7 +65,6 @@
   <aside class="sidebar">
     <div class="logo mb-4" onclick="location.href='../user/index.html'">ILYRA</div>
     <p onclick="location.href='dashboard.html'">Dashboard</p>
-    <p onclick="location.href='categories.html'">Categories</p>
     <p class="active" onclick="location.href='products.html'">Products</p>
     <p onclick="location.href='orders.html'">Orders</p>
     <p onclick="location.href='users.html'">Users</p>
@@ -106,16 +105,16 @@
           <input id="original_price" type="number" placeholder="1299">
         </div>
         <div>
-          <label>Category</label>
+          <label>Category Name</label>
           <input id="category" placeholder="Apparel">
+        </div>
+        <div>
+          <label>Category Cover Image (Optional)</label>
+          <input type="file" id="categoryImageFile" accept="image/*">
         </div>
         <div>
           <label>Stock Quantity</label>
           <input id="stock" type="number" placeholder="50">
-        </div>
-        <div>
-          <label>Sizes (Comma separated)</label>
-          <input id="sizes" placeholder="S, M, L, XL">
         </div>
         <div style="grid-column: 1 / -1;">
           <label>Description</label>
@@ -125,7 +124,29 @@
           <label>Main Product Image</label>
           <input type="file" id="imageFile">
         </div>
-        
+
+        <!-- SIZE MANAGER -->
+        <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
+          <h3 style="margin-bottom: 0.5rem;">Sizes & Pricing</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Add sizes and optional specific prices. (If price left blank, uses main product price).</p>
+          <div id="sizeVariantsContainer" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;"></div>
+          
+          <div style="display: flex; gap: 1rem; align-items: flex-end; background: var(--surface-hover); padding: 1rem; border-radius: var(--border-radius-sm);">
+            <div style="flex: 1;">
+              <label>Size</label>
+              <input id="newSizeName" placeholder="E.g. XL">
+            </div>
+            <div style="flex: 1;">
+              <label>Offer Price (₹)</label>
+              <input id="newSizePrice" type="number" placeholder="500">
+            </div>
+            <div style="flex: 1;">
+              <label>MRP (₹)</label>
+              <input id="newSizeOriginalPrice" type="number" placeholder="600">
+            </div>
+            <button class="btn btn-secondary" style="width: auto;" onclick="addSizeVariant()">Add Size</button>
+          </div>
+        </div>
         <!-- VARIANT MANAGER -->
         <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
           <h3 style="margin-bottom: 0.5rem;">Color Variants & Images</h3>
@@ -192,6 +213,21 @@ let products = [];
 let chartInstance = null;
 let editingId = null;
 let currentVariants = [];
+let currentSizeVariants = [];
+let categoryImageBase64 = null;
+
+document.getElementById("categoryImageFile").addEventListener("change", function() {
+  const file = this.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      categoryImageBase64 = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    categoryImageBase64 = null;
+  }
+});
 
 function addVariant() {
   const colorInput = document.getElementById("newVariantColor");
@@ -222,6 +258,47 @@ function addVariant() {
 function removeVariant(index) {
   currentVariants.splice(index, 1);
   renderVariants();
+}
+
+function addSizeVariant() {
+  const sizeInput = document.getElementById("newSizeName");
+  const priceInput = document.getElementById("newSizePrice");
+  const originalPriceInput = document.getElementById("newSizeOriginalPrice");
+  
+  if (!sizeInput.value) {
+    showToast("Please enter a size");
+    return;
+  }
+  
+  currentSizeVariants.push({
+    size: sizeInput.value,
+    price: priceInput.value ? parseFloat(priceInput.value) : null,
+    original_price: originalPriceInput.value ? parseFloat(originalPriceInput.value) : null
+  });
+  
+  sizeInput.value = "";
+  priceInput.value = "";
+  originalPriceInput.value = "";
+  renderSizeVariants();
+}
+
+function removeSizeVariant(index) {
+  currentSizeVariants.splice(index, 1);
+  renderSizeVariants();
+}
+
+function renderSizeVariants() {
+  const container = document.getElementById("sizeVariantsContainer");
+  container.innerHTML = currentSizeVariants.map((v, i) => `
+    <div style="display: flex; align-items: center; justify-content: space-between; background: var(--surface-color); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: var(--border-radius-sm);">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <span style="font-weight: 600;">${v.size}</span>
+        <span style="color: var(--accent-color);">₹${v.price || "Default"}</span>
+        <span style="color: var(--text-muted); text-decoration: line-through;">${v.original_price ? '₹'+v.original_price : ''}</span>
+      </div>
+      <button class="btn btn-secondary" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: #ef4444; color: #ef4444;" onclick="removeSizeVariant(${i})">Remove</button>
+    </div>
+  `).join("");
 }
 
 function renderVariants() {
@@ -295,10 +372,16 @@ function editProduct(p) {
   document.getElementById("description").value = p.description || "";
   document.getElementById("category").value = p.category || "";
   document.getElementById("stock").value = p.stock || 0;
-  document.getElementById("sizes").value = p.sizes || "";
   
   currentVariants = Array.isArray(p.variants) ? [...p.variants] : [];
+  currentSizeVariants = Array.isArray(p.size_prices) ? [...p.size_prices] : [];
+  if (currentSizeVariants.length === 0 && p.sizes) {
+    // Fallback for old products
+    currentSizeVariants = p.sizes.split(",").map(s => ({ size: s.trim(), price: null, original_price: null })).filter(s => s.size);
+  }
+
   renderVariants();
+  renderSizeVariants();
   
   const preview = document.getElementById("preview");
   preview.src = p.image;
@@ -321,11 +404,14 @@ function cancelEdit() {
   document.getElementById("description").value = "";
   document.getElementById("category").value = "";
   document.getElementById("stock").value = "";
-  document.getElementById("sizes").value = "";
+  document.getElementById("categoryImageFile").value = "";
   document.getElementById("imageFile").value = "";
   document.getElementById("preview").style.display = "none";
+  categoryImageBase64 = null;
   currentVariants = [];
+  currentSizeVariants = [];
   renderVariants();
+  renderSizeVariants();
 }
 
 async function saveProduct() {
@@ -337,9 +423,8 @@ async function saveProduct() {
   const description = document.getElementById("description").value;
   const stock = document.getElementById("stock").value;
   const category = document.getElementById("category").value;
-  const sizes = document.getElementById("sizes").value;
   
-  // Create comma separated colors list from variants for backward compatibility
+  const sizes = currentSizeVariants.map(v => v.size).join(", ");
   const colors = currentVariants.map(v => v.color).join(", ");
   const previewImg = document.getElementById("preview").src;
 
@@ -364,7 +449,9 @@ async function saveProduct() {
       body: JSON.stringify({ 
         id: productId, name, price, original_price, description, 
         image: previewImg, stock: parseInt(stock), 
-        category, sizes, colors, variants: currentVariants 
+        category, category_image: categoryImageBase64,
+        sizes, colors, variants: currentVariants,
+        size_prices: currentSizeVariants
       })
     });
 

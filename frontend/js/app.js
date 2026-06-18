@@ -375,7 +375,7 @@ function searchProducts() {
 }
 
 // ================= CART SYSTEM =================
-function addToCart(product, size = "M", color = "Default", variantImage = null) {
+function addToCart(product, size = "M", color = "Default", variantImage = null, priceOverride = null) {
   let cart = JSON.parse(localStorage.getItem("cart")) || [];
   
   // Use a composite key to distinguish between different variants of the same product
@@ -385,12 +385,13 @@ function addToCart(product, size = "M", color = "Default", variantImage = null) 
   if (existing) {
     existing.quantity += 1;
     if (variantImage) existing.image = variantImage;
+    if (priceOverride) existing.price = priceOverride;
   } else {
     cart.push({
       variantKey: variantKey,
       id: product.id,
       name: product.name,
-      price: product.price,
+      price: priceOverride || product.price,
       image: variantImage || product.image,
       size: size,
       color: color,

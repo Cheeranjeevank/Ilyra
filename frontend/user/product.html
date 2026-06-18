@@ -192,10 +192,11 @@
 const params = new URLSearchParams(window.location.search);
 const id = params.get("id");
 let currentProduct = null;
-let selectedSize = "";
-let selectedColor = "";
+let selectedSize = null;
+let selectedColor = null;
 let selectedVariantImage = null;
 let selectedQuantity = 1;
+let selectedPrice = null;
 
 async function loadProduct() {
   if (!id) {
@@ -209,7 +210,15 @@ async function loadProduct() {
     currentProduct = product;
 
     if (product) {
-      const sizes = (product.sizes || "S,M,L,XL").split(",");
+      let sizeVariants = [];
+      try {
+        sizeVariants = Array.isArray(product.size_prices) && product.size_prices.length > 0 
+          ? product.size_prices 
+          : (product.sizes || "S,M,L,XL").split(",").map(s => ({ size: s.trim(), price: null, original_price: null })).filter(s => s.size);
+      } catch(e) { 
+        sizeVariants = [{ size: "M", price: null, original_price: null }]; 
+      }
+
       let colors = [];
       try {
         colors = Array.isArray(product.variants) && product.variants.length > 0 
@@ -218,7 +227,10 @@ async function loadProduct() {
       } catch(e) { colors = []; }
 
       // Set defaults
-      selectedSize = sizes[0] || "M";
+      selectedSize = sizeVariants[0]?.size || "M";
+      selectedPrice = sizeVariants[0]?.price || product.price;
+      const initialOriginalPrice = sizeVariants[0]?.original_price || product.original_price;
+
       if (colors.length > 0) {
         selectedColor = colors[0].color || colors[0].name;
         selectedVariantImage = colors[0].image || product.image;
@@ -249,8 +261,8 @@ async function loadProduct() {
             </span>
             <h1 style="font-size: 3rem; margin-bottom: 0.75rem; line-height: 1.1;">${product.name}</h1>
             <div style="display: flex; gap: 1rem; align-items: baseline; margin-bottom: 2rem;">
-              <p style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary);">₹${product.price}</p>
-              ${product.original_price ? `<p style="font-size: 1.25rem; font-weight: 500; color: var(--text-muted); text-decoration: line-through;">MRP: ₹${product.original_price}</p>` : ''}
+              <p id="displayPrice" style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary);">₹${selectedPrice}</p>
+              ${initialOriginalPrice ? `<p id="displayOriginalPrice" style="font-size: 1.25rem; font-weight: 500; color: var(--text-muted); text-decoration: line-through;">MRP: ₹${initialOriginalPrice}</p>` : `<p id="displayOriginalPrice" style="font-size: 1.25rem; font-weight: 500; color: var(--text-muted); text-decoration: line-through; display: none;"></p>`}
             </div>
             
             <p style="margin-bottom: 2.5rem; color: var(--text-secondary); line-height: 1.8; font-size: 1.1rem;">
@@ -291,8 +303,8 @@ async function loadProduct() {
             <div class="variant-selector">
               <label class="variant-label">Select Size</label>
               <div class="size-chips">
-                ${sizes.map((s, index) => `
-                  <div class="size-chip ${index === 0 ? 'active' : ''}" onclick="selectSize('${s}', this)">${s}</div>
+                ${sizeVariants.map((sv, index) => `
+                  <div class="size-chip ${index === 0 ? 'active' : ''}" onclick="selectSize('${sv.size}', ${sv.price || 'null'}, ${sv.original_price || 'null'}, this)">${sv.size}</div>
                 `).join("")}
               </div>
             </div>
@@ -455,8 +467,20 @@ function updateMainImage(src) {
   }, 200);
 }
 
-function selectSize(size, el) {
+function selectSize(size, overridePrice, overrideOriginalPrice, el) {
   selectedSize = size;
+  selectedPrice = overridePrice || currentProduct.price;
+  
+  document.getElementById('displayPrice').innerText = '₹' + selectedPrice;
+  const origPriceEl = document.getElementById('displayOriginalPrice');
+  const origPrice = overrideOriginalPrice || currentProduct.original_price;
+  if (origPrice) {
+    origPriceEl.innerText = 'MRP: ₹' + origPrice;
+    origPriceEl.style.display = 'block';
+  } else {
+    origPriceEl.style.display = 'none';
+  }
+
   document.querySelectorAll('.size-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
 }
@@ -479,8 +503,11 @@ function handleAddToCart() {
   if(!currentProduct) return;
   
   for(let i=0; i < selectedQuantity; i++) {
-    addToCart(currentProduct, selectedSize, selectedColor, selectedVariantImage);
+    addToCart(currentProduct, selectedSize, selectedColor, selectedVariantImage, selectedPrice);
   }
+  
+  showToast("Added to cart!");
+  updateCartCount();
 }
 
 function addToWishlist() {
