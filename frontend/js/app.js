@@ -366,7 +366,9 @@ function searchProducts() {
   const query = document.getElementById("search")?.value.toLowerCase() || "";
   const filtered = allProducts.filter(p =>
     p.name.toLowerCase().includes(query) || 
-    (p.category && p.category.toLowerCase().includes(query))
+    (p.category && p.category.toLowerCase().includes(query)) ||
+    (p.keywords && p.keywords.toLowerCase().includes(query)) ||
+    (p.description && p.description.toLowerCase().includes(query))
   );
   renderProducts(filtered);
   
