@@ -337,7 +337,10 @@ function renderProducts(products) {
     <div class="card fade-in">
       <img src="${p.image}" alt="${p.name}">
       <h3>${p.name}</h3>
-      <p style="color: var(--accent-color); font-weight: 700;">₹${p.price}</p>
+      <div style="display: flex; gap: 0.5rem; align-items: baseline;">
+        <p style="color: var(--accent-color); font-weight: 700; font-size: 1.25rem;">₹${p.price}</p>
+        ${p.original_price ? `<p style="color: var(--text-muted); text-decoration: line-through; font-size: 0.9rem;">₹${p.original_price}</p>` : ''}
+      </div>
       
       <div style="margin-top: auto;">
         ${p.stock === 0 ? `

@@ -231,7 +231,7 @@ async function loadProduct() {
         <div style="display:flex; gap:4rem; flex-wrap:wrap; align-items: flex-start;">
           <div style="flex: 1; min-width: 300px;">
             <div class="card" style="padding: 0; overflow: hidden; border-radius: var(--border-radius-lg); position: sticky; top: 120px;">
-              <img id="mainImg" src="${product.image || 'https://via.placeholder.com/600'}" 
+              <img id="mainImg" src="${selectedVariantImage || product.image || 'https://via.placeholder.com/600'}" 
                    style="width: 100%; display: block; transition: var(--transition);">
             </div>
             <div id="imageGallery" style="display:flex; gap:1rem; margin-top:1.5rem; flex-wrap: wrap;">
@@ -248,7 +248,10 @@ async function loadProduct() {
               ${product.category || 'Collection'}
             </span>
             <h1 style="font-size: 3rem; margin-bottom: 0.75rem; line-height: 1.1;">${product.name}</h1>
-            <p style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2rem;">₹${product.price}</p>
+            <div style="display: flex; gap: 1rem; align-items: baseline; margin-bottom: 2rem;">
+              <p style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary);">₹${product.price}</p>
+              ${product.original_price ? `<p style="font-size: 1.25rem; font-weight: 500; color: var(--text-muted); text-decoration: line-through;">MRP: ₹${product.original_price}</p>` : ''}
+            </div>
             
             <p style="margin-bottom: 2.5rem; color: var(--text-secondary); line-height: 1.8; font-size: 1.1rem;">
               ${product.description || 'Experience the perfect blend of style and comfort with this premium ILYRA product. Designed for the modern individual who values quality and minimalism.'}
