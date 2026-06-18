@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Details | ILYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .variant-selector {
+    margin-bottom: 2rem;
+  }
+  .variant-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .size-chips {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .size-chip {
+    padding: 0.6rem 1.25rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+    background: var(--surface-color);
+    color: var(--text-primary);
+  }
+  .size-chip:hover {
+    border-color: var(--accent-color);
+  }
+  .size-chip.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+    box-shadow: var(--shadow-md);
+  }
+  .color-swatches {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .swatch-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
+  .swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid var(--surface-color);
+    box-shadow: 0 0 0 1px var(--border-color);
+    transition: var(--transition);
+    position: relative;
+  }
+  .swatch-container:hover .swatch {
+    transform: scale(1.1);
+  }
+  .swatch-container.active .swatch {
+    box-shadow: 0 0 0 2px var(--accent-color);
+    transform: scale(1.1);
+  }
+  .swatch-name {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: var(--transition);
+  }
+  .swatch-container.active .swatch-name {
+    color: var(--accent-color);
+    font-weight: 700;
+  }
+  .quantity-input {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--surface-hover);
+    padding: 0.5rem;
+    border-radius: var(--border-radius-sm);
+    width: fit-content;
+  }
+  .qty-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    border: none;
+    background: var(--surface-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+  }
+  .qty-btn:hover {
+    background: var(--accent-color);
+    color: white;
+  }
+  #qtyDisplay {
+    font-weight: 700;
+    min-width: 30px;
+    text-align: center;
+  }
+  .amazon-alert {
+    background: #fff4e5;
+    border: 1px solid #ffa117;
+    color: #854d0e;
+    padding: 0.75rem;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .delivery-badge {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+  .countdown-timer {
+    color: #b12704;
+    font-weight: 700;
+  }
+  .review-card {
+    background: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+  }
+  .stars {
+    color: #ffa41c;
+    margin-bottom: 0.5rem;
+  }
+  .verified-badge {
+    color: #c45500;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="overlay"></div>
+<canvas id="particles"></canvas>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="logo" onclick="location.href='index.html'">ILYRA</div>
+  <div class="nav-right">
+    <span class="nav-link" onclick="location.href='index.html'">Products</span>
+    <span class="nav-link" onclick="location.href='order.html'">My Orders</span>
+    <div class="cart" onclick="location.href='cart.html'">
+      🛒<span id="cartCount">0</span>
+    </div>
+  </div>
+</nav>
+
+<!-- PRODUCT -->
+<main class="container" style="margin-top: 120px;">
+  <div id="productDetails" class="fade-in">
+    <!-- Product details will be loaded here -->
+    <div class="text-center" style="padding: 4rem;">
+        <p>Loading product details...</p>
+    </div>
+  </div>
+  
+  <section id="related" style="margin-top: 4rem;">
+    <h2 class="mb-4">Related Products</h2>
+    <div class="products" id="relatedProducts"></div>
+  </section>
+</main>
+
+<script src="../js/app.js"></script>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const id = params.get("id");
+let currentProduct = null;
+let selectedSize = "";
+let selectedColor = "";
+let selectedQuantity = 1;
+
+async function loadProduct() {
+  if (!id) {
+    document.getElementById("productDetails").innerHTML = "<h2>Product not found</h2>";
+    return;
+  }
+
+  try {
+    const productsData = await fetchProducts();
+    const product = productsData.find(p => p.id === id);
+    currentProduct = product;
+
+    if (product) {
+      const sizes = (product.sizes || "S,M,L,XL").split(",");
+      let colors = [];
+      try {
+        colors = JSON.parse(product.colors || "[]");
+      } catch(e) { colors = []; }
+
+      // Set defaults
+      selectedSize = sizes[0];
+      selectedColor = colors.length > 0 ? colors[0].name : "Standard";
+
+      document.getElementById("productDetails").innerHTML = `
+        <div style="display:flex; gap:4rem; flex-wrap:wrap; align-items: flex-start;">
+          <div style="flex: 1; min-width: 300px;">
+            <div class="card" style="padding: 0; overflow: hidden; border-radius: var(--border-radius-lg); position: sticky; top: 120px;">
+              <img id="mainImg" src="${product.image || 'https://via.placeholder.com/600'}" 
+                   style="width: 100%; display: block; transition: var(--transition);">
+            </div>
+            <div id="imageGallery" style="display:flex; gap:1rem; margin-top:1.5rem; flex-wrap: wrap;">
+              ${(product.images || [product.image]).map(img => `
+                <div class="card" style="padding: 0.5rem; width: 80px; cursor: pointer;" onclick="updateMainImage('${img}')">
+                  <img src="${img}" style="width: 100%; border-radius: var(--border-radius-sm);">
+                </div>
+              `).join("")}
+            </div>
+          </div>
+
+          <div style="flex: 1; min-width: 400px;">
+            <span style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.75rem; font-weight: 700; color: var(--accent-color); margin-bottom: 0.5rem; display: block;">
+              ${product.category || 'Collection'}
+            </span>
+            <h1 style="font-size: 3rem; margin-bottom: 0.75rem; line-height: 1.1;">${product.name}</h1>
+            <p style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2rem;">₹${product.price}</p>
+            
+            <p style="margin-bottom: 2.5rem; color: var(--text-secondary); line-height: 1.8; font-size: 1.1rem;">
+              ${product.description || 'Experience the perfect blend of style and comfort with this premium ILYRA product. Designed for the modern individual who values quality and minimalism.'}
+            </p>
+
+            ${product.stock > 0 && product.stock < 20 ? `
+              <div class="amazon-alert">
+                <span>⚠️</span> Only ${product.stock} left in stock - order soon.
+              </div>
+            ` : ''}
+
+            <div class="delivery-badge" id="deliveryInfo">
+              Get it by <strong id="deliveryDate" style="color: var(--text-primary);">...</strong><br>
+              Order within <span class="countdown-timer" id="countdown">...</span>
+            </div>
+
+            <!-- COLOR SELECTOR -->
+            ${colors.length > 0 ? `
+              <div class="variant-selector">
+                <label class="variant-label">Color: <span id="colorNameDisplay" style="color: var(--text-primary);">${selectedColor}</span></label>
+                <div class="color-swatches">
+                  ${colors.map((c, index) => `
+                    <div class="swatch-container ${index === 0 ? 'active' : ''}" 
+                         onclick="selectColor('${c.name}', '${c.image}', this)">
+                      <div class="swatch" style="background: ${c.hex || '#ccc'};"></div>
+                      <span class="swatch-name">${c.name}</span>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- SIZE SELECTOR -->
+            <div class="variant-selector">
+              <label class="variant-label">Select Size</label>
+              <div class="size-chips">
+                ${sizes.map((s, index) => `
+                  <div class="size-chip ${index === 0 ? 'active' : ''}" onclick="selectSize('${s}', this)">${s}</div>
+                `).join("")}
+              </div>
+            </div>
+
+            <div class="variant-selector">
+              <label class="variant-label">Quantity</label>
+              <div class="quantity-input">
+                <button class="qty-btn" onclick="updateQuantity(-1)">-</button>
+                <span id="qtyDisplay">1</span>
+                <button class="qty-btn" onclick="updateQuantity(1)">+</button>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 3rem;">
+              ${product.stock === 0 ? `
+                <button class="btn" style="background: var(--text-muted); cursor: not-allowed; flex: 2;" disabled>
+                  Out of Stock
+                </button>
+              ` : `
+                <button class="btn" style="flex: 2; height: 60px; font-size: 1.1rem;" onclick="handleAddToCart()">
+                  Add to Cart
+                </button>
+              `}
+              <button class="btn btn-secondary" style="flex: 1; height: 60px;" onclick="addToWishlist()">
+                ♡
+              </button>
+            </div>
+            
+            <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-color); display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+              <div>
+                <p style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Availability</p>
+                <p style="font-weight: 600; font-size: 0.9rem;">${product.stock > 0 ? 'In Stock' : 'Out of Stock'}</p>
+              </div>
+              <div>
+                <p style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Free Shipping</p>
+                <p style="font-weight: 600; font-size: 0.9rem;">On orders over ₹999</p>
+              </div>
+            </div>
+
+            <div style="margin-top: 2rem; display: flex; gap: 2rem; opacity: 0.7;">
+              <div style="text-align: center;">
+                <span style="font-size: 1.5rem;">🔒</span>
+                <p style="font-size: 0.7rem; font-weight: 600; margin-top: 0.25rem;">SECURE<br>PAYMENT</p>
+              </div>
+              <div style="text-align: center;">
+                <span style="font-size: 1.5rem;">🚚</span>
+                <p style="font-size: 0.7rem; font-weight: 600; margin-top: 0.25rem;">FAST<br>DELIVERY</p>
+              </div>
+              <div style="text-align: center;">
+                <span style="font-size: 1.5rem;">♻️</span>
+                <p style="font-size: 0.7rem; font-weight: 600; margin-top: 0.25rem;">ECO<br>FRIENDLY</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section style="margin-top: 6rem; border-top: 1px solid var(--border-color); padding-top: 4rem;">
+          <h2 class="mb-4">Customer Reviews</h2>
+          <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 4rem;">
+            <div>
+              <div style="font-size: 3rem; font-weight: 800; margin-bottom: 0.5rem;">4.8 <span style="font-size: 1.5rem; color: var(--text-muted);">/ 5</span></div>
+              <div class="stars" style="font-size: 1.5rem;">★★★★★</div>
+              <p style="font-size: 0.875rem; color: var(--text-muted);">Based on 124 verified reviews</p>
+              
+              <div style="margin-top: 2rem;">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                  <span style="font-size: 0.875rem; min-width: 40px;">5 Star</span>
+                  <div style="flex: 1; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 85%; height: 100%; background: #ffa41c;"></div>
+                  </div>
+                  <span style="font-size: 0.875rem; width: 30px;">85%</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                  <span style="font-size: 0.875rem; min-width: 40px;">4 Star</span>
+                  <div style="flex: 1; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 10%; height: 100%; background: #ffa41c;"></div>
+                  </div>
+                  <span style="font-size: 0.875rem; width: 30px;">10%</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                  <span style="font-size: 0.875rem; min-width: 40px;">3 Star</span>
+                  <div style="flex: 1; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 5%; height: 100%; background: #ffa41c;"></div>
+                  </div>
+                  <span style="font-size: 0.875rem; width: 30px;">5%</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="review-card">
+                <div class="stars">★★★★★</div>
+                <p style="font-weight: 700; margin-bottom: 0.5rem;">Absolutely incredible quality!</p>
+                <p style="font-size: 0.875rem; margin-bottom: 1rem;">"The attention to detail and the fit of this product exceeded all my expectations. It feels premium and looks stunning in person. Definitely worth every penny."</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 0.875rem; font-weight: 600;">Arjun K.</span>
+                  <span class="verified-badge">✓ Verified Purchase</span>
+                </div>
+              </div>
+              <div class="review-card">
+                <div class="stars">★★★★★</div>
+                <p style="font-weight: 700; margin-bottom: 0.5rem;">Perfect minimalist aesthetic</p>
+                <p style="font-size: 0.875rem; margin-bottom: 1rem;">"Fast delivery and the packaging was super premium. The color is exactly like the photos. Will be ordering more from ILYRA soon!"</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 0.875rem; font-weight: 600;">Sarah M.</span>
+                  <span class="verified-badge">✓ Verified Purchase</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      `;
+      loadRelated(product.id, productsData);
+      startCountdown();
+    } else {
+      document.getElementById("productDetails").innerHTML = "<h2>Product not found</h2>";
+    }
+  } catch (err) {
+    console.error(err);
+    document.getElementById("productDetails").innerHTML = "<h2>Error loading product</h2>";
+  }
+}
+
+function startCountdown() {
+  const deliveryDateEl = document.getElementById('deliveryDate');
+  const countdownEl = document.getElementById('countdown');
+  
+  if (!deliveryDateEl || !countdownEl) return;
+
+  // Set Delivery Date (3 days from now)
+  const delivery = new Date();
+  delivery.setDate(delivery.getDate() + 3);
+  const options = { weekday: 'long', month: 'short', day: 'numeric' };
+  deliveryDateEl.innerText = delivery.toLocaleDateString('en-US', options);
+
+  // Countdown to midnight for "Tomorrow Delivery"
+  function updateTimer() {
+    const now = new Date();
+    const tonight = new Date();
+    tonight.setHours(24, 0, 0, 0);
+    
+    const diff = tonight - now;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const secs = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    countdownEl.innerText = `${hours}h ${mins}m ${secs}s`;
+  }
+
+  updateTimer();
+  setInterval(updateTimer, 1000);
+}
+
+function updateMainImage(src) {
+  const mainImg = document.getElementById('mainImg');
+  mainImg.style.opacity = '0';
+  setTimeout(() => {
+    mainImg.src = src;
+    mainImg.style.opacity = '1';
+  }, 200);
+}
+
+function selectSize(size, el) {
+  selectedSize = size;
+  document.querySelectorAll('.size-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function selectColor(color, image, el) {
+  selectedColor = color;
+  document.getElementById('colorNameDisplay').innerText = color;
+  document.querySelectorAll('.swatch-container').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  if (image) updateMainImage(image);
+}
+
+function updateQuantity(change) {
+  selectedQuantity = Math.max(1, selectedQuantity + change);
+  document.getElementById('qtyDisplay').innerText = selectedQuantity;
+}
+
+function handleAddToCart() {
+  if(!currentProduct) return;
+  
+  for(let i=0; i < selectedQuantity; i++) {
+    addToCart(currentProduct, selectedSize, selectedColor);
+  }
+}
+
+function addToWishlist() {
+    showToast("Added to wishlist!");
+}
+
+async function loadRelated(currentId, productsData) {
+  const related = productsData.filter(p => p.id !== currentId).slice(0, 4);
+  const container = document.getElementById("relatedProducts");
+  
+  if (related.length === 0) {
+    document.getElementById("related").style.display = "none";
+    return;
+  }
+
+  container.innerHTML = related.map(p => `
+    <div class="card fade-in">
+      <img src="${p.image}" alt="${p.name}">
+      <h3>${p.name}</h3>
+      <p>₹${p.price}</p>
+      <button class="btn btn-secondary" onclick="location.href='product.html?id=${p.id}'">View Product</button>
+    </div>
+  `).join("");
+}
+
+loadProduct();
+
+// Hover effect for main image
+document.addEventListener("mouseover", e => {
+  if (e.target.id === "mainImg") {
+    e.target.style.transform = "scale(1.05)";
+  }
+});
+
+document.addEventListener("mouseout", e => {
+  if (e.target.id === "mainImg") {
+    e.target.style.transform = "scale(1)";
+  }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Profile | ILYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="overlay"></div>
+<canvas id="particles"></canvas>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="logo" onclick="location.href='index.html'">ILYRA</div>
+  <div class="nav-right">
+    <span class="nav-link" onclick="location.href='index.html'">Products</span>
+    <span class="nav-link" onclick="location.href='order.html'">My Orders</span>
+    <div class="cart" onclick="location.href='cart.html'">
+      🛒<span id="cartCount">0</span>
+    </div>
+  </div>
+</nav>
+
+<main class="container" style="margin-top: 120px; max-width: 600px;">
+  <div class="text-center mb-4">
+    <h1>Account Profile</h1>
+    <p>Manage your account settings and preferences.</p>
+  </div>
+
+  <div class="card fade-in">
+    <div style="display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border-color);">
+      <div style="width: 80px; height: 80px; background: var(--accent-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700;">
+        <span id="userInitial">U</span>
+      </div>
+      <div>
+        <h2 id="userNameDisplay" style="margin-bottom: 0.25rem;">User Name</h2>
+        <p id="userEmailDisplay" style="font-size: 0.875rem;">user@example.com</p>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Account Details</h3>
+      <div style="display: grid; gap: 1rem;">
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Full Name</span>
+          <span id="userName" style="font-weight: 600;">-</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Email</span>
+          <span id="userEmail" style="font-weight: 600;">-</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);">Account Status</span>
+          <span style="color: #10b981; font-weight: 600;">Active</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+      <button class="btn" style="flex: 1;" onclick="location.href='order.html'">My Orders</button>
+      <button class="btn btn-secondary" style="flex: 1; border-color: #ef4444; color: #ef4444;" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  
+  <div class="mt-4 text-center">
+    <button class="btn btn-secondary" style="width: auto;" onclick="location.href='index.html'">Back to Shop</button>
+  </div>
+</main>
+
+<script src="../js/app.js"></script>
+
+<script>
+function loadProfile() {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  if (user) {
+    document.getElementById("userName").innerText = user.name || "N/A";
+    document.getElementById("userEmail").innerText = user.email || "N/A";
+    document.getElementById("userNameDisplay").innerText = user.name || "User";
+    document.getElementById("userEmailDisplay").innerText = user.email || "";
+    document.getElementById("userInitial").innerText = (user.name || "U")[0].toUpperCase();
+  } else {
+    window.location.href = "../login.html";
+  }
+}
+
+function logout() {
+  localStorage.removeItem("user");
+  localStorage.removeItem("token");
+  localStorage.removeItem("cart");
+  window.location.href = "../login.html";
+}
+
+loadProfile();
+</script>
+
+</body>
+</html>

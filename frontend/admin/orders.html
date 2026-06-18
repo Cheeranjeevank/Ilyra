@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Orders | ILYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface-color);
+}
+
+.table th {
+  text-align: left;
+  padding: 1rem 1.5rem;
+  background: var(--surface-hover);
+  border-bottom: 2px solid var(--border-color);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.table td {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.table tr:hover {
+  background: var(--surface-hover);
+}
+
+.status-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.status-successful { background: #dcfce7; color: #166534; }
+.status-pending { background: #fef9c3; color: #854d0e; }
+.status-shipped { background: #e0f2fe; color: #075985; }
+.status-delivered { background: #f0fdf4; color: #15803d; }
+
+.timeline {
+  display: flex;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+  justify-content: space-between;
+}
+
+.timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border-color);
+  position: relative;
+}
+
+.timeline-dot.active {
+  background: var(--accent-color);
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2);
+}
+
+.timeline-dot::after {
+  content: attr(data-label);
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.timeline-dot.active::after {
+  color: var(--text-primary);
+}
+
+.payment-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.paid { background: #10b981; color: white; }
+.unpaid { background: #64748b; color: white; }
+</style>
+</head>
+
+<body>
+
+<div class="overlay"></div>
+
+<div class="admin">
+  <aside class="sidebar">
+    <div class="logo mb-4" onclick="location.href='../user/index.html'">ILYRA</div>
+    <p onclick="location.href='dashboard.html'">Dashboard</p>
+    <p onclick="location.href='products.html'">Products</p>
+    <p class="active" onclick="location.href='orders.html'">Orders</p>
+    <p onclick="location.href='users.html'">Users</p>
+  </aside>
+
+  <main class="content">
+    <header class="header mb-4">
+      <h1>Global Orders</h1>
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <input id="searchOrder" class="search-bar" placeholder="Order ID or status..." oninput="filterOrders()" style="width: 250px;">
+        <button class="btn btn-secondary" style="width: auto;" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <div class="table-container fade-in">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Order Details</th>
+                    <th>Customer</th>
+                    <th>Total Amout</th>
+                    <th>Payment</th>
+                    <th>Order Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="ordersTable"></tbody>
+        </table>
+    </div>
+  </main>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+const token = localStorage.getItem("token");
+if (!token) window.location.href = "admin-login.html";
+
+let orders = [];
+
+async function loadOrders() {
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/api/orders`, {
+      headers: { "Authorization": token }
+    });
+    orders = await res.json();
+    renderOrders();
+  } catch (err) {
+    console.error(err);
+    document.getElementById("ordersContainer").innerHTML = "<p>Error loading orders.</p>";
+  }
+}
+
+function renderOrders(list = orders) {
+  const table = document.getElementById("ordersTable");
+  if (list.length === 0) {
+    table.innerHTML = "<tr><td colspan='7' class='text-center'>No orders found.</td></tr>";
+    return;
+  }
+
+  table.innerHTML = list.map(o => {
+    const isPaid = o.payment_status === "paid";
+    const paymentStatus = isPaid ? "Successful" : "Pending";
+    const paymentClass = isPaid ? "status-successful" : "status-pending";
+    const itemsHtml = o.items ? o.items.map(item => `<div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">• ${item.name} (x${item.quantity})</div>`).join("") : '<div style="font-size: 0.8rem; color: var(--text-muted);">No items</div>';
+
+    return `
+    <tr class="fade-in">
+      <td>
+        <div style="font-weight: 700; color: var(--text-primary);">#${o.id.slice(0, 8)}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">${new Date(o.date || o.created_at).toLocaleDateString()}</div>
+        <div style="margin-top: 0.5rem;">
+          <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary);">Products Ordered:</div>
+          ${itemsHtml}
+        </div>
+      </td>
+      <td>
+        <div style="font-size: 0.85rem;">User: ${o.user_id.slice(0, 8)}...</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted);">Contact provided at checkout</div>
+      </td>
+      <td>
+        <div style="color: var(--accent-color); font-weight: 800;">₹${o.total}</div>
+      </td>
+      <td>
+        <span class="status-badge ${paymentClass}">
+          ${isPaid ? '✓' : '⟳'} ${paymentStatus}
+        </span>
+      </td>
+      <td>
+        <span class="status-badge status-${o.status.toLowerCase()}">${o.status}</span>
+      </td>
+      <td>
+        <div style="display: flex; gap: 0.5rem;">
+          ${!isPaid ? `
+            <button class="btn" style="padding:0.4rem 0.6rem; font-size:0.75rem; background: #10b981;" onclick="markPaid('${o.id}')" title="Mark Paid">
+               Mark Paid
+            </button>
+          ` : `
+            <button class="btn btn-secondary" style="padding:0.4rem 0.6rem; font-size:0.75rem;" onclick="updateStatus('${o.id}', '${o.status}')">
+               Next Stage
+            </button>
+          `}
+        </div>
+      </td>
+    </tr>
+    `;
+  }).join("");
+}
+
+async function updateStatus(id, current) {
+  const flow = ["placed", "shipped", "delivered"];
+  let next = flow[flow.indexOf(current) + 1] || "placed";
+
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/api/orders/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token
+      },
+      body: JSON.stringify({ status: next })
+    });
+    if (res.ok) {
+        showToast(`Order status updated to ${next}!`);
+        loadOrders();
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("Update failed.");
+  }
+}
+
+async function markPaid(id) {
+  if (!confirm("Are you sure you want to mark this order as paid?")) return;
+
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/api/orders/${id}/mark-paid`, {
+      method: "POST",
+      headers: {
+        "Authorization": token
+      }
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+        showToast("Success: Order marked as paid!");
+        loadOrders();
+    } else {
+        showToast("Error: " + (data.error || data.message || "Request failed"));
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("Request failed.");
+  }
+}
+
+function filterOrders() {
+  const query = document.getElementById("searchOrder").value.toLowerCase();
+  const filtered = orders.filter(o => 
+    String(o.id).toLowerCase().includes(query) || 
+    (o.status && o.status.toLowerCase().includes(query)) ||
+    (o.payment_status && o.payment_status.toLowerCase().includes(query))
+  );
+  renderOrders(filtered);
+}
+
+function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "admin-login.html";
+}
+
+loadOrders();
+</script>
+
+</body>
+</html>

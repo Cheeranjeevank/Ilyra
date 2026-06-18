@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Success | ILYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body style="display: flex; align-items: center; justify-content: center;">
+
+<div class="overlay"></div>
+<canvas id="particles"></canvas>
+
+<div class="container" style="max-width: 500px; padding: 0;">
+  <div class="card fade-in text-center" style="padding: 4rem; box-shadow: var(--shadow-lg);">
+    <div style="font-size: 5rem; margin-bottom: 1.5rem;">🎉</div>
+    <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Order Placed!</h1>
+    <div id="orderIdContainer" style="display: none; margin-bottom: 2rem; background: var(--surface-hover); padding: 0.75rem; border-radius: var(--border-radius-sm); border: 1px dashed var(--accent-color);">
+      <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">Order Code: <strong id="displayOrderId" style="color: var(--accent-color); font-family: monospace; font-size: 1.1rem; letter-spacing: 1px;"></strong></p>
+    </div>
+    <p style="color: var(--text-secondary); margin-bottom: 2.5rem; line-height: 1.8;">
+      Thank you for shopping with ILYRA. Your order has been successfully placed and is being processed. 
+      You will receive an email confirmation shortly.
+    </p>
+
+    <div style="display: flex; gap: 1rem; flex-direction: column;">
+      <button class="btn" onclick="location.href='order.html'">View My Orders</button>
+      <button class="btn btn-secondary" onclick="location.href='index.html'">Continue Shopping</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+  window.onload = () => {
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get("id");
+    if (orderId) {
+      document.getElementById("orderIdContainer").style.display = "block";
+      document.getElementById("displayOrderId").innerText = "#" + orderId.slice(0, 8).toUpperCase();
+    }
+  }
+</script>
+
+</body>
+</html>

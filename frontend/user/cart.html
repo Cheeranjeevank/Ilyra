@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Cart | ILYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .cart-item {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .cart-item:last-child {
+    border-bottom: none;
+  }
+  .cart-item img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: var(--border-radius-sm);
+  }
+  .qty-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--surface-hover);
+    padding: 0.25rem;
+    border-radius: 50px;
+    width: fit-content;
+  }
+  .qty-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: var(--surface-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-weight: 700;
+    transition: var(--transition);
+  }
+  .qty-btn:hover {
+    background: var(--accent-color);
+    color: white;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="overlay"></div>
+<canvas id="particles"></canvas>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="logo" onclick="location.href='index.html'">ILYRA</div>
+  <div class="nav-right">
+    <span class="nav-link" onclick="location.href='index.html'">Products</span>
+    <span class="nav-link" onclick="location.href='order.html'">My Orders</span>
+    <div class="cart" onclick="location.href='cart.html'">
+      🛒<span id="cartCount">0</span>
+    </div>
+  </div>
+</nav>
+
+<!-- CART -->
+<main class="container" style="margin-top: 120px; max-width: 800px;">
+  <h1 class="mb-4">Shopping Cart</h1>
+
+  <div id="cartItems" class="card" style="padding: 0; overflow: hidden; margin-bottom: 2rem;">
+    <!-- Items will be loaded here -->
+    <div class="text-center" style="padding: 4rem;">
+        <p>Your cart is empty.</p>
+        <button class="btn btn-secondary mt-4" style="width: auto;" onclick="location.href='index.html'">Start Shopping</button>
+    </div>
+  </div>
+
+  <div id="cartSummary" class="card" style="display: none;">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+      <span style="font-weight: 600; color: var(--text-secondary);">Subtotal</span>
+      <span id="totalPrice" style="font-weight: 700; font-size: 1.25rem;">₹0</span>
+    </div>
+    <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">Shipping and taxes calculated at checkout.</p>
+    <button class="btn" onclick="checkout()">Proceed to Checkout</button>
+  </div>
+
+  <section id="recommended" style="margin-top: 4rem;">
+    <h2 class="mb-4">Recommended for You</h2>
+    <div class="products" id="recommendationsGrid">
+      <p>Loading suggestions...</p>
+    </div>
+  </section>
+</main>
+
+<script src="../js/app.js"></script>
+
+<script>
+function loadCart() {
+  const cart = JSON.parse(localStorage.getItem("cart")) || [];
+  const container = document.getElementById("cartItems");
+  const summary = document.getElementById("cartSummary");
+  
+  if (cart.length === 0) {
+    container.innerHTML = `
+      <div class="text-center" style="padding: 4rem;">
+          <p>Your cart is empty.</p>
+          <button class="btn btn-secondary mt-4" style="width: auto;" onclick="location.href='index.html'">Start Shopping</button>
+      </div>
+    `;
+    summary.style.display = "none";
+    return;
+  }
+
+  summary.style.display = "block";
+  let total = 0;
+
+  container.innerHTML = cart.map(item => {
+    const itemTotal = item.price * item.quantity;
+    total += itemTotal;
+    return `
+      <div class="cart-item">
+        <img src="${item.image || 'https://via.placeholder.com/100'}" alt="${item.name}">
+        <div style="flex: 1;">
+          <h3 style="margin-bottom: 0.25rem;">${item.name}</h3>
+          <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">
+            <span style="font-size: 0.75rem; background: var(--surface-hover); padding: 0.2rem 0.5rem; border-radius: 4px; color: var(--text-secondary);">Size: <strong>${item.size}</strong></span>
+            <span style="font-size: 0.75rem; background: var(--surface-hover); padding: 0.2rem 0.5rem; border-radius: 4px; color: var(--text-secondary);">Color: <strong>${item.color}</strong></span>
+          </div>
+          <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.75rem;">₹${item.price} each</p>
+          
+          <div class="qty-control">
+            <button class="qty-btn" onclick="updateQty('${item.variantKey}', ${item.quantity - 1})">-</button>
+            <span style="width: 30px; text-align: center; font-weight: 600;">${item.quantity}</span>
+            <button class="qty-btn" onclick="updateQty('${item.variantKey}', ${item.quantity + 1})">+</button>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <p style="font-weight: 700; margin-bottom: 0.5rem;">₹${itemTotal}</p>
+          <button style="background: none; border: none; color: #ef4444; font-size: 0.875rem; cursor: pointer; font-weight: 500;" 
+                  onclick="removeItem('${item.variantKey}')">Remove</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  document.getElementById("totalPrice").innerText = "₹" + total;
+  document.title = `Cart (${cart.length}) | ILYRA`;
+}
+
+function removeItem(variantKey) {
+  let cart = JSON.parse(localStorage.getItem("cart")) || [];
+  cart = cart.filter(item => item.variantKey !== variantKey);
+  localStorage.setItem("cart", JSON.stringify(cart));
+  loadCart();
+  updateCartCount();
+}
+
+function updateQty(variantKey, qty) {
+  if (qty < 1) return;
+  let cart = JSON.parse(localStorage.getItem("cart")) || [];
+  cart = cart.map(item => {
+    if (item.variantKey === variantKey) item.quantity = qty;
+    return item;
+  });
+  localStorage.setItem("cart", JSON.stringify(cart));
+  loadCart();
+  updateCartCount();
+}
+
+function checkout() {
+  const cart = JSON.parse(localStorage.getItem("cart")) || [];
+  if (cart.length === 0) return;
+  localStorage.setItem("checkoutItems", JSON.stringify(cart));
+  window.location.href = "checkout.html";
+}
+
+async function loadRecommendations() {
+  try {
+    const allProducts = await fetchProducts();
+    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+    const cartIds = cart.map(item => item.id);
+    
+    // Filter out items already in cart
+    const suggested = allProducts.filter(p => !cartIds.includes(p.id)).slice(0, 3);
+    const container = document.getElementById("recommendationsGrid");
+    
+    if (suggested.length === 0) {
+      document.getElementById("recommended").style.display = "none";
+      return;
+    }
+
+    container.innerHTML = suggested.map(p => `
+      <div class="card fade-in">
+        <img src="${p.image}" alt="${p.name}">
+        <h3>${p.name}</h3>
+        <p>₹${p.price}</p>
+        <button class="btn btn-secondary" onclick="location.href='product.html?id=${p.id}'">View Product</button>
+      </div>
+    `).join("");
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+loadCart();
+loadRecommendations();
+</script>
+
+</body>
+</html>

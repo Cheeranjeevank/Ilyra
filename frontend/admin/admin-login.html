@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login | ILYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body style="display: flex; align-items: center; justify-content: center;">
+
+<div class="overlay"></div>
+<canvas id="particles"></canvas>
+
+<div class="container" style="max-width: 400px; padding: 0;">
+  <div class="card fade-in" style="padding: 2.5rem; box-shadow: var(--shadow-lg);">
+    <div class="text-center mb-4">
+      <h1 class="logo" style="font-size: 2.5rem; margin-bottom: 0.5rem;" onclick="location.href='../user/index.html'">ILYRA</h1>
+      <p style="color: var(--text-secondary); font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.1em;">Admin Portal</p>
+    </div>
+
+    <div class="mb-4">
+      <label>Admin Email</label>
+      <input type="email" id="email" placeholder="admin@ilyra.com" required>
+    </div>
+
+    <div class="mb-4">
+      <label>Secure Password</label>
+      <input type="password" id="password" placeholder="••••••••" required>
+    </div>
+
+    <button class="btn mt-4" onclick="login()">Enter Dashboard</button>
+
+    <div class="text-center mt-4" style="font-size: 0.9rem;">
+      <a href="../user/index.html" style="color: var(--text-muted); text-decoration: none;">Return to Storefront</a>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+async function login() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  if (!email || !password) {
+    showToast("Please enter both email and password.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (data.success && data.user.role === "admin") {
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      window.location.href = "dashboard.html";
+    } else {
+      showToast(data.message || "Unauthorized access ❌");
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("Server connection error.");
+  }
+}
+</script>
+
+</body>
+</html>

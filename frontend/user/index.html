@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ILYRA | Premium Store</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="overlay"></div>
+<canvas id="particles"></canvas>
+
+
+    <!-- CATEGORIES SECTION -->
+    <div id="categoryGrid" class="category-grid"></div>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="logo" onclick="location.href='index.html'">ILYRA</div>
+
+  <input id="search" class="search-bar" placeholder="Search products..." oninput="searchProducts()">
+
+  <div class="nav-right">
+    <span class="nav-link" onclick="location.href='index.html'">Products</span>
+    <span class="nav-link" onclick="location.href='order.html'">My Orders</span>
+    <div class="cart" onclick="location.href='cart.html'">
+      🛒<span id="cartCount">0</span>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="container" style="margin-top: 100px;">
+  <div class="text-center mb-4">
+    <h1 class="section-title" style="font-size: 2.5rem; margin-bottom: 0.5rem;">Our Collections</h1>
+    <p>Premium apparel, minimalist design, maximum comfort.</p>
+  </div>
+  
+  <div class="products" id="products">
+    <!-- Products will be loaded here -->
+    <div class="text-center" style="grid-column: 1/-1; padding: 4rem;">
+        <p>Loading premium collections...</p>
+    </div>
+  </div>
+</main>
+
+<!-- SCRIPTS -->
+<script src="../js/app.js"></script>
+
+<script>
+  // LOAD ON START
+  async function init() {
+    await fetchProducts();
+    renderCategories();
+  }
+  
+  init();
+</script>
+  
+</body>
+</html>

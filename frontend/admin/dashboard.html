@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.card {
+  padding: 1.5rem;
+  text-align: center;
+  border-radius: var(--border-radius-md);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  transition: var(--transition);
+  cursor: pointer; /* INTERACTIVE */
+}
+
+.card:hover {
+  transform: translateY(-8px) scale(1.02); /* ENHANCED LIFT */
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  border-color: var(--accent-color);
+}
+
+.chart-focus {
+  animation: glow 1s ease-in-out forwards;
+  position: relative;
+  z-index: 10;
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); border-color: var(--border-color); }
+  50% { box-shadow: 0 0 20px 5px rgba(79, 70, 229, 0.6); border-color: var(--accent-color); }
+  100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); border-color: var(--border-color); }
+}
+
+.card h3 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: var(--accent-color);
+}
+
+.card p {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-container {
+  background: var(--surface-color);
+  padding: 1.5rem;
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  max-height: 120px; /* SPARKLINE MODE */
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
+  cursor: pointer;
+}
+
+.chart-container:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  border-color: var(--accent-color);
+}
+
+.chart-container.expanded {
+  grid-column: 1 / -1 !important;
+  max-height: 800px; /* FULL VIEW MODE WITH DETAILS */
+  box-shadow: 0 10px 30px rgba(79, 70, 229, 0.2);
+}
+
+.chart-details {
+  display: none;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+  animation: fadeIn 0.5s ease;
+}
+
+.chart-container.expanded .chart-details {
+  display: block;
+}
+
+.chart-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.chart-stat-box {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
+  text-align: center;
+  border: 1px solid var(--border-color);
+}
+
+.chart-stat-box h4 {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.chart-stat-box p {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.chart-container h3 {
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chart-container h3::after {
+  content: "CLICK TO VIEW DETAILS";
+  font-size: 0.6rem;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.chart-container:hover h3::after {
+  opacity: 1;
+  color: var(--accent-color);
+}
+
+.table-container {
+  background: var(--surface-color);
+  padding: 2rem;
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 1rem;
+  border-bottom: 2px solid var(--border-color);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+</style>
+<script src="../js/app.js"></script>
+
+</head>
+
+<body>
+
+<div class="overlay"></div>
+
+<div class="admin">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar glass">
+    <h2>Admin</h2>
+    <p class="active" onclick="go('dashboard.html')">Dashboard</p>
+    <p onclick="go('products.html')">Products</p>
+    <p onclick="go('orders.html')">Orders</p>
+    <p onclick="go('users.html')">Users</p>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- HEADER -->
+    <div class="header">
+      <h1>Dashboard</h1>
+    </div>
+  
+    <!-- DASHBOARD CARDS -->
+    <div class="cards">
+
+      <div class="card glass products" onclick="showAnalytics('section-top-products')">
+        <h3 id="productsSold">0</h3>
+        <p>Products Sold</p>
+      </div>
+
+      <div class="card glass orders" onclick="showAnalytics('section-category')">
+        <h3 id="totalStock">0</h3>
+        <p>Total Stock</p>
+      </div>
+
+      <div class="card glass users" onclick="showAnalytics('section-daily')">
+        <h3 id="ordersReceived">0</h3>
+        <p>Orders Received</p>
+      </div>
+
+      <div class="card glass revenue" onclick="showAnalytics('section-status')">
+        <h3 id="ordersCompleted">0</h3>
+        <p>Orders Completed</p>
+      </div>
+
+      <div class="card glass profit" onclick="showAnalytics('section-revenue')">
+        <h3 id="totalRevenue">₹0</h3>
+        <p>Total Revenue</p>
+      </div>
+
+    </div>
+
+    <div class="charts-grid">
+      <div id="section-revenue" class="chart-container glass" onclick="toggleChart(this)">
+        <h3>Revenue Timeline</h3>
+        <canvas id="revenueChart"></canvas>
+        <div class="chart-details" id="details-revenue"></div>
+      </div>
+
+      <div id="section-category" class="chart-container glass" onclick="toggleChart(this)">
+        <h3>Sales by Category</h3>
+        <canvas id="categoryChart"></canvas>
+        <div class="chart-details" id="details-category"></div>
+      </div>
+
+      <div id="section-monthly" class="chart-container glass" onclick="toggleChart(this)">
+        <h3>Monthly Performance</h3>
+        <canvas id="monthlyChart"></canvas>
+        <div class="chart-details" id="details-monthly"></div>
+      </div>
+
+      <div id="section-status" class="chart-container glass" onclick="toggleChart(this)">
+        <h3>Order Status Distribution</h3>
+        <canvas id="statusChart"></canvas>
+        <div class="chart-details" id="details-status"></div>
+      </div>
+
+      <div id="section-daily" class="chart-container glass" style="grid-column: 1 / -1;" onclick="toggleChart(this)">
+        <h3>Daily Sales (Last 7 Days)</h3>
+        <canvas id="dailyChart" style="max-height: 300px;"></canvas>
+        <div class="chart-details" id="details-daily"></div>
+      </div>
+    </div>
+
+    <div class="glass" style="padding:20px;">
+      <h2>Recent Orders</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Status</th>
+            <th>Total</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="ordersTable"></tbody>
+      </table>
+    </div>
+  
+    <div id="section-top-products" class="glass" style="padding:20px; margin-top:20px;">
+      <h2>Top Selling Products</h2>
+      <div id="topProducts"></div>
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+function go(page){
+  window.location.href = page;
+}
+
+// AUTH
+if(!localStorage.getItem("token")){
+  window.location.href = "admin-login.html";
+}
+
+let products = [];
+let orders = [];
+let users = [];
+let stats = {};
+
+// LOAD DATA FROM BACKEND
+async function loadData(){
+  const token = localStorage.getItem("token");
+  const headers = { "Authorization": token };
+
+  try {
+    const [pRes, oRes, uRes, sRes] = await Promise.all([
+      fetch(`${CONFIG.API_URL}/api/products`),
+      fetch(`${CONFIG.API_URL}/api/orders`, { headers }),
+      fetch(`${CONFIG.API_URL}/api/users`, { headers }),
+      fetch(`${CONFIG.API_URL}/api/admin/stats`, { headers })
+    ]);
+
+    products = await pRes.json();
+    orders = await oRes.json();
+    users = await uRes.json();
+    stats = await sRes.json();
+
+    updateDashboard();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// COUNT ANIMATION
+function animateCount(id, target){
+  if (!document.getElementById(id)) return;
+  let count = 0;
+  const step = Math.ceil(target / 30) || 1;
+
+  const interval = setInterval(()=>{
+    count += step;
+    if(count >= target){
+      count = target;
+      clearInterval(interval);
+    }
+    document.getElementById(id).innerText = (id === "totalRevenue" ? "₹" : "") + count;
+  }, 20);
+}
+
+// UPDATE UI
+function updateDashboard(){
+  animateCount("productsSold", stats.productsSold || 0);
+  animateCount("totalStock", stats.totalStock || 0);
+  animateCount("ordersReceived", stats.ordersReceived || 0);
+  animateCount("ordersCompleted", stats.ordersCompleted || 0);
+  animateCount("totalRevenue", stats.totalRevenue || 0);
+
+  renderCharts();
+  renderOrders();
+  renderTopProducts();
+}
+
+// CHARTS
+let charts = {};
+
+function getGradient(ctx, color) {
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, color + "44");
+  gradient.addColorStop(1, color + "00");
+  return gradient;
+}
+
+function renderCharts(){
+  if (!orders || !Array.isArray(orders)) return;
+  const paidOrders = orders.filter(o => o.payment_status === "paid");
+  
+  const accentColor = getComputedStyle(document.documentElement).getPropertyValue("--accent-color").trim() || "#8b5cf6";
+  const mutedColor = getComputedStyle(document.documentElement).getPropertyValue("--text-muted").trim() || "#6b7280";
+
+  // Common Options
+  const commonOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: "#1f2937",
+        titleColor: "#fff",
+        bodyColor: "#fff",
+        borderColor: "#374151",
+        borderWidth: 1,
+        padding: 10,
+        displayColors: false
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: mutedColor } },
+      y: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: mutedColor } }
+    }
+  };
+
+  // 1. Revenue Timeline
+  if(charts.revenue) charts.revenue.destroy();
+  charts.revenue = new Chart(document.getElementById("revenueChart"), {
+    type: "line",
+    data: {
+      labels: paidOrders.map((_,i)=>"#"+(i+1)),
+      datasets: [{
+        label: "Revenue",
+        data: paidOrders.map(o => parseFloat(o.total) || 0),
+        borderColor: accentColor,
+        backgroundColor: (context) => getGradient(context.chart.ctx, accentColor),
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 5
+      }]
+    },
+    options: commonOptions
+  });
+
+  // 2. Category Distribution
+  const categorySales = {};
+  paidOrders.forEach(o=>{
+    if (Array.isArray(o.items)) {
+      o.items.forEach(i=>{
+        const category = i.category || "Other";
+        categorySales[category] = (categorySales[category] || 0) + ((parseFloat(i.price) || 0) * (parseInt(i.quantity) || 0));
+      });
+    }
+  });
+
+  if(charts.category) charts.category.destroy();
+  charts.category = new Chart(document.getElementById("categoryChart"), {
+    type: "doughnut",
+    data: {
+      labels: Object.keys(categorySales),
+      datasets: [{
+        data: Object.values(categorySales),
+        backgroundColor: [accentColor, "#3b82f6", "#10b981", "#f59e0b", "#ef4444"],
+        borderWidth: 0,
+        hoverOffset: 10
+      }]
+    },
+    options: {
+        ...commonOptions,
+        plugins: { ...commonOptions.plugins, legend: { display: true, position: "bottom", labels: { color: mutedColor } } },
+        scales: { x: { display: false }, y: { display: false } }
+    }
+  });
+
+  // 3. Monthly
+  const monthly = {};
+  paidOrders.forEach(o=>{
+    const dateStr = o.date || o.created_at;
+    if (dateStr) {
+        const date = new Date(dateStr);
+        if (!isNaN(date)) {
+            const month = date.toLocaleString("default", { month: "short" });
+            monthly[month] = (monthly[month] || 0) + (parseFloat(o.total) || 0);
+        }
+    }
+  });
+
+  if(charts.monthly) charts.monthly.destroy();
+  charts.monthly = new Chart(document.getElementById("monthlyChart"), {
+    type: "bar",
+    data: {
+      labels: Object.keys(monthly),
+      datasets: [{
+        label: "Revenue",
+        data: Object.values(monthly),
+        backgroundColor: accentColor,
+        borderRadius: 5
+      }]
+    },
+    options: commonOptions
+  });
+
+  // 4. Status
+  const statusCount = {Placed:0, Delivered:0};
+  orders.forEach(o => { if(o.status && statusCount[o.status] !== undefined) statusCount[o.status]++; });
+
+  if(charts.status) charts.status.destroy();
+  charts.status = new Chart(document.getElementById("statusChart"), {
+    type: "pie",
+    data: {
+      labels: ["Placed", "Delivered"],
+      datasets: [{
+        data: [statusCount.Placed, statusCount.Delivered],
+        backgroundColor: ["#f59e0b", "#10b981"],
+        borderWidth: 0
+      }]
+    },
+    options: {
+        ...commonOptions,
+        plugins: { ...commonOptions.plugins, legend: { display: true, position: "bottom", labels: { color: mutedColor } } },
+        scales: { x: { display: false }, y: { display: false } }
+    }
+  });
+
+  // 5. Daily
+  const daily = {};
+  const today = new Date();
+  for(let i=6; i>=0; i--){
+    const d = new Date();
+    d.setDate(today.getDate() - i);
+    const key = d.toLocaleDateString(undefined, { weekday: "short" });
+    daily[key] = 0;
+  }
+
+  paidOrders.forEach(o=>{
+    const dateStr = o.created_at;
+    if (dateStr) {
+        const date = new Date(dateStr);
+        if (!isNaN(date)) {
+            const d = date.toLocaleDateString(undefined, { weekday: "short" });
+            if(daily[d] !== undefined) daily[d] += (parseFloat(o.total) || 0);
+        }
+    }
+  });
+
+  if(charts.daily) charts.daily.destroy();
+  charts.daily = new Chart(document.getElementById("dailyChart"), {
+    type: "line",
+    data: {
+      labels: Object.keys(daily),
+      datasets: [{
+        label: "Daily Sales",
+        data: Object.values(daily),
+        borderColor: "#10b981",
+        backgroundColor: (context) => getGradient(context.chart.ctx, "#10b981"),
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: "#10b981"
+      }]
+    },
+    options: {
+        ...commonOptions,
+        maintainAspectRatio: false,
+        plugins: { ...commonOptions.plugins, legend: { display: true, labels: { color: mutedColor } } }
+    }
+  });
+
+  // --- DETAILED ANALYTICS COMPUTATION ---
+  
+  // 1. Revenue
+  let totalRev = paidOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+  let avgRev = paidOrders.length ? (totalRev / paidOrders.length).toFixed(2) : 0;
+  document.getElementById('details-revenue').innerHTML = `
+    <div class="chart-stats-grid">
+      <div class="chart-stat-box"><h4>Total Revenue</h4><p>₹${totalRev.toFixed(2)}</p></div>
+      <div class="chart-stat-box"><h4>Average Order Value</h4><p>₹${avgRev}</p></div>
+      <div class="chart-stat-box"><h4>Paid Orders</h4><p>${paidOrders.length}</p></div>
+    </div>
+  `;
+
+  // 2. Category
+  let sortedCat = Object.entries(categorySales).sort((a,b)=>b[1]-a[1]);
+  let topCat = sortedCat.length > 0 ? sortedCat[0][0] : "N/A";
+  let topCatSales = sortedCat.length > 0 ? sortedCat[0][1] : 0;
+  document.getElementById('details-category').innerHTML = `
+    <div class="chart-stats-grid">
+      <div class="chart-stat-box"><h4>Top Category</h4><p>${topCat}</p></div>
+      <div class="chart-stat-box"><h4>Category Revenue</h4><p>₹${topCatSales.toFixed(2)}</p></div>
+      <div class="chart-stat-box"><h4>Categories Count</h4><p>${sortedCat.length}</p></div>
+    </div>
+  `;
+
+  // 3. Monthly
+  let sortedMonth = Object.entries(monthly).sort((a,b)=>b[1]-a[1]);
+  let topMonth = sortedMonth.length > 0 ? sortedMonth[0][0] : "N/A";
+  let topMonthSales = sortedMonth.length > 0 ? sortedMonth[0][1] : 0;
+  document.getElementById('details-monthly').innerHTML = `
+    <div class="chart-stats-grid">
+      <div class="chart-stat-box"><h4>Best Month</h4><p>${topMonth}</p></div>
+      <div class="chart-stat-box"><h4>Best Month Revenue</h4><p>₹${topMonthSales.toFixed(2)}</p></div>
+    </div>
+  `;
+
+  // 4. Status
+  let totalStatus = statusCount.Placed + statusCount.Delivered;
+  let deliveryRate = totalStatus > 0 ? ((statusCount.Delivered / totalStatus) * 100).toFixed(1) : 0;
+  document.getElementById('details-status').innerHTML = `
+    <div class="chart-stats-grid">
+      <div class="chart-stat-box"><h4>Delivered</h4><p>${statusCount.Delivered}</p></div>
+      <div class="chart-stat-box"><h4>Placed</h4><p>${statusCount.Placed}</p></div>
+      <div class="chart-stat-box"><h4>Delivery Rate</h4><p>${deliveryRate}%</p></div>
+    </div>
+  `;
+
+  // 5. Daily
+  let recent7DaysRev = Object.values(daily).reduce((a,b)=>a+b, 0);
+  let avgDaily = (recent7DaysRev / 7).toFixed(2);
+  document.getElementById('details-daily').innerHTML = `
+    <div class="chart-stats-grid">
+      <div class="chart-stat-box"><h4>7-Day Revenue</h4><p>₹${recent7DaysRev.toFixed(2)}</p></div>
+      <div class="chart-stat-box"><h4>Average Daily</h4><p>₹${avgDaily}</p></div>
+    </div>
+  `;
+}
+
+// RECENT ORDERS
+function renderOrders(){
+  const table = document.getElementById("ordersTable");
+  if (!table) return;
+  table.innerHTML = "";
+
+  if (!Array.isArray(orders)) return;
+
+  orders.slice(0,5).forEach(o=>{
+    if (!o) return;
+    const isPlaced = o.status === "placed";
+    const isPaid = o.payment_status === "paid";
+    
+    table.innerHTML += `
+      <tr>
+        <td>${o.id.slice(0, 8)}...</td>
+        <td id="status-${o.id}">${o.status || "N/A"}</td>
+        <td>₹${o.total || 0}</td>
+        <td>
+          ${!isPaid ? `
+            <button class="btn" style="font-size:0.7rem; padding:0.2rem 0.5rem; background: var(--accent-color);" onclick="markPaid('${o.id}')">
+              Mark Paid
+            </button>
+          ` : `
+            <span style="color:var(--accent-color); font-weight:700;">PAID</span>
+          `}
+        </td>
+      </tr>
+    `;
+  });
+}
+
+async function markPaid(id) {
+  if (!confirm("Mark this order as paid?")) return;
+  const token = localStorage.getItem("token");
+  
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/api/orders/${id}/mark-paid`, {
+      method: "POST",
+      headers: { "Authorization": token }
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast("Success! Order marked as paid.");
+      loadData(); // Refresh all stats
+    } else {
+      showToast("Error: " + (data.error || data.message || "Failed"));
+    }
+  } catch (err) {
+    showToast("Server error.");
+  }
+}
+
+// TOP PRODUCTS
+function renderTopProducts(){
+  if (!Array.isArray(orders)) return;
+  const sales = {};
+
+  orders.forEach(o=>{
+    if (!o || !Array.isArray(o.items)) return;
+    o.items.forEach(i=>{
+      if (i && i.name) {
+        sales[i.name] = (sales[i.name] || 0) + (parseInt(i.quantity) || 0);
+      }
+    });
+  });
+
+  const sorted = Object.entries(sales).sort((a,b)=>b[1]-a[1]);
+
+  const container = document.getElementById("topProducts");
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (sorted.length === 0) {
+    container.innerHTML = "<p style='color: var(--text-muted);'>No sales data available yet.</p>";
+    return;
+  }
+
+  sorted.slice(0,5).forEach(([name,count])=>{
+    container.innerHTML += `<p>${name} - ${count} sold</p>`;
+  });
+}
+
+// INTERACTIVE ANALYTICS
+function showAnalytics(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  
+  // Smooth scroll
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  
+  // Expand it
+  if (!el.classList.contains('expanded')) {
+    el.classList.add('expanded');
+    el.classList.add('chart-focus');
+    setTimeout(() => el.classList.remove('chart-focus'), 1200);
+  }
+}
+
+function toggleChart(el) {
+  el.classList.toggle('expanded');
+  // Scroll to centered position if expanded
+  if (el.classList.contains('expanded')) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+// AUTH GUARD
+const userData = JSON.parse(localStorage.getItem("user"));
+const userToken = localStorage.getItem("token");
+if (!userToken || !userData || userData.role !== "admin") {
+  window.location.href = "admin-login.html";
+}
+
+// INIT
+loadData();
+</script>
+</body>
+</html>
