@@ -18,7 +18,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "50mb" }));
 
 // ======================
 // DB CONNECTION (Support both local and cloud)
@@ -245,7 +245,7 @@ app.put("/api/products/:id", auth, async (req, res) => {
         description=$8, original_price=$9, variants=$10, size_prices=$11,
         updated_at=NOW() 
        WHERE id=$12`,
-      [name, price, image, stock, category, sizes, colors, description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]', req.params.id]
+      [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]', req.params.id]
     );
     res.json({ success: true, message: "Product updated" });
   } catch (err) {

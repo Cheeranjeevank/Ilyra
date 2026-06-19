@@ -28,10 +28,14 @@
       <button class="btn" onclick="location.href='order.html'">View My Orders</button>
       <button class="btn btn-secondary" onclick="location.href='index.html'">Continue Shopping</button>
     </div>
+    
+    <p style="margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-muted);">
+      Redirecting to your orders in <span id="countdown">4</span> seconds...
+    </p>
   </div>
 </div>
 
-<script src="../js/app.js"></script>
+<script src="../js/app.js?v=2"></script>
 <script>
   window.onload = () => {
     const params = new URLSearchParams(window.location.search);
@@ -40,6 +44,17 @@
       document.getElementById("orderIdContainer").style.display = "block";
       document.getElementById("displayOrderId").innerText = "#" + orderId.slice(0, 8).toUpperCase();
     }
+
+    let seconds = 4;
+    const countdownEl = document.getElementById("countdown");
+    setInterval(() => {
+      seconds--;
+      if (seconds > 0) {
+        countdownEl.innerText = seconds;
+      } else {
+        window.location.href = 'order.html';
+      }
+    }, 1000);
   }
 </script>
 

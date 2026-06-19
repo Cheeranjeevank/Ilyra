@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Checkout | ILYRA</title>
 <link rel="stylesheet" href="../css/style.css">
-<!-- Razorpay Modal Script removed for Hosted Payment Page Redirect -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 
 <body>
@@ -97,7 +97,7 @@
   </div>
 </main>
 
-<script src="../js/app.js"></script>
+<script src="../js/app.js?v=2"></script>
 
 <script>
 let cart = [];
@@ -161,49 +161,91 @@ async function placeOrder() {
   };
 
   if (Object.values(addressData).some(v => !v)) {
-    showToast("Please fill in all shipping details.");
+    alert("Please fill in all shipping details.");
     return;
   }
 
   const token = localStorage.getItem("token");
   if (!token) {
-    showToast("Please login to place an order.");
+    alert("Please login to place an order.");
     window.location.href = "../login.html";
     return;
   }
 
-  // 1️⃣ Record Pending Order in DB
   try {
-    const res = await fetch(`${CONFIG.API_URL}/api/orders`, {
+    // 1️⃣ Fetch Razorpay Key
+    const keyRes = await fetch(`${CONFIG.API_URL}/api/payment/key`);
+    const keyData = await keyRes.json();
+    const rzpKey = keyData.key;
+
+    // 2️⃣ Create Order via Backend
+    const orderRes = await fetch(`${CONFIG.API_URL}/api/payment/create-order`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": token },
-      body: JSON.stringify({
-        items: cart,
-        address: addressData,
-        status: "placed", // Note: Keep backend compatible
-        payment_status: "pending_payment"
-      })
+      body: JSON.stringify({ amount: totalAmount })
     });
-    const data = await res.json();
-    if (data.success) {
-        console.log("Pending order created:", data.orderId);
+    const orderData = await orderRes.json();
+
+    if (orderData.id && orderData.id.startsWith("sim_order_")) {
+      // 🟩 SIMULATED DEV MODE (No Real Keys)
+      console.log("Simulated payment success for dev mode");
+      await submitFinalOrder("sim_payment_" + Date.now(), orderData.id);
+      return;
     }
+
+    // 🟦 REAL RAZORPAY MODAL
+    const options = {
+      key: rzpKey,
+      amount: totalAmount * 100,
+      currency: "INR",
+      name: "ILYRA",
+      description: "Premium Purchase",
+      order_id: orderData.id,
+      prefill: {
+        name: addressData.name,
+        email: addressData.email,
+        contact: addressData.phone
+      },
+      handler: async function (response) {
+        console.log("Payment Successful:", response);
+        await submitFinalOrder(response.razorpay_payment_id, response.razorpay_order_id);
+      },
+      theme: { color: "#4f46e5" }
+    };
+    
+    const rzp = new Razorpay(options);
+    rzp.open();
+
   } catch (err) {
-    console.warn("Backend recording failed (likely unreachable):", err);
+    console.error("Checkout Error:", err);
+    alert("Unable to initiate checkout. Please try again.");
   }
 
-  // 2️⃣ Prepare Redirect URL with Pre-fill Parameters
-  // Using the direct link to ensure Pre-fill works correctly
-  const paymentPage = "https://pages.razorpay.com/pl_SXt6MfdTLKmXdH/view";
-  
-  // Hosted Page parameters: amount, email, contact
-  const paymentLink = `${paymentPage}?amount=${totalAmount}&email=${encodeURIComponent(addressData.email)}&contact=${encodeURIComponent(addressData.phone)}`;
-
-  // 3️⃣ Prompt and Redirect
-  if (confirm(`Redirecting to Razorpay to pay ₹${totalAmount}. Please complete the payment to place your order.`)) {
-    localStorage.removeItem("cart");
-    localStorage.removeItem("checkoutItems");
-    window.location.href = paymentLink;
+  async function submitFinalOrder(paymentId, razorpayOrderId) {
+    try {
+      const res = await fetch(`${CONFIG.API_URL}/api/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": token },
+        body: JSON.stringify({
+          items: cart,
+          address: addressData,
+          status: "placed",
+          payment_id: paymentId,
+          razorpay_order_id: razorpayOrderId
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.removeItem("cart");
+        localStorage.removeItem("checkoutItems");
+        window.location.href = `success.html?id=${data.orderId}`;
+      } else {
+        alert("Payment successful but failed to record order. Please contact support.");
+      }
+    } catch(err) {
+      console.error(err);
+      alert("Error recording order.");
+    }
   }
 }
 
