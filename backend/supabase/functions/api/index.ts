@@ -1,11 +1,11 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const { Pool } = require("pg");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const Razorpay = require("razorpay");
-const crypto = require("crypto");
+import express from "npm:express@4.18.2";
+import cors from "npm:cors@2.8.5";
+import pg from "npm:pg@8.11.3";
+const { Pool } = pg;
+import bcrypt from "npm:bcryptjs@2.4.3";
+import jwt from "npm:jsonwebtoken@9.0.2";
+import Razorpay from "npm:razorpay@2.9.2";
+import crypto from "node:crypto";
 
 const app = express();
 
@@ -23,17 +23,17 @@ app.use(express.json({ limit: "50mb" }));
 // ======================
 // DB CONNECTION (Support both local and cloud)
 // ======================
-const dbConfig = process.env.DATABASE_URL 
+const dbConfig = Deno.env.toObject().DATABASE_URL 
   ? { 
-      connectionString: process.env.DATABASE_URL,
+      connectionString: Deno.env.toObject().DATABASE_URL,
       ssl: { rejectUnauthorized: false }
     }
   : {
-      user: process.env.DB_USER,
-      host: process.env.DB_HOST,
-      database: process.env.DB_NAME,
-      password: process.env.DB_PASSWORD,
-      port: Number(process.env.DB_PORT || 5432),
+      user: Deno.env.toObject().DB_USER,
+      host: Deno.env.toObject().DB_HOST,
+      database: Deno.env.toObject().DB_NAME,
+      password: Deno.env.toObject().DB_PASSWORD,
+      port: Number(Deno.env.toObject().DB_PORT || 5432),
     };
 
 const pool = new Pool(dbConfig);
@@ -58,7 +58,7 @@ function auth(req, res, next) {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, Deno.env.toObject().JWT_SECRET);
     req.user = decoded;
     next();
   } catch {
@@ -118,7 +118,7 @@ app.post("/api/auth/login", async (req, res) => {
   if (match) {
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET
+      Deno.env.toObject().JWT_SECRET
     );
 
     res.json({
@@ -526,8 +526,8 @@ app.delete("/api/users/:id", auth, async (req, res) => {
 // PAYMENT ROUTES
 // ======================
 
-const rzpKey = process.env.RAZORPAY_KEY || process.env.RAZORPAY_KEY_ID;
-const rzpSecret = process.env.RAZORPAY_SECRET || process.env.RAZORPAY_KEY_SECRET;
+const rzpKey = Deno.env.toObject().RAZORPAY_KEY || Deno.env.toObject().RAZORPAY_KEY_ID;
+const rzpSecret = Deno.env.toObject().RAZORPAY_SECRET || Deno.env.toObject().RAZORPAY_KEY_SECRET;
 
 const isRazorpayConfigured = rzpKey && rzpSecret && rzpKey !== "rzp_test_placeholder";
 
@@ -622,7 +622,6 @@ app.post("/api/payment/verify", auth, async (req, res) => {
 // ======================
 // START SERVER
 // ======================
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} 🚀`);
+app.listen(8000, () => {
+  console.log("Express app listening on port 8000");
 });
