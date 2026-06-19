@@ -385,7 +385,7 @@ app.get("/api/admin/stats", auth, async (req: any, res: any) => {
   }
 
   try {
-    const stats = {};
+    const stats: any = {};
 
     // 1. Total Products & Stock
     const productStats = await pool.query("SELECT COUNT(*) as count, SUM(stock) as stock FROM products");
