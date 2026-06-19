@@ -620,7 +620,7 @@ function renderOrders(){
     
     table.innerHTML += `
       <tr>
-        <td>${o.id.slice(0, 8)}...</td>
+        <td>${String(o.id).slice(0, 8)}...</td>
         <td id="status-${o.id}">${o.status || "N/A"}</td>
         <td>₹${o.total || 0}</td>
         <td>

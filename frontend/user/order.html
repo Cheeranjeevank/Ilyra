@@ -75,7 +75,7 @@ async function loadOrders() {
         <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;">
           <div>
             <p style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Order ID</p>
-            <p style="font-weight: 600;">#${o.id.slice(0, 8)}</p>
+            <p style="font-weight: 600;">#${String(o.id).slice(0, 8)}</p>
           </div>
           <div style="text-align: right;">
             <p style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Date Placed</p>

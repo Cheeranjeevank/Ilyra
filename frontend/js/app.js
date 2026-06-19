@@ -488,7 +488,7 @@ function renderTrackingCard(order) {
       <div class="tracking-header">
         <div>
           <span style="font-size: 0.8rem; color: var(--text-secondary);">Latest Order:</span>
-          <span style="font-weight: 700;">#${order.id.slice(0, 8)}</span>
+          <span style="font-weight: 700;">#${String(order.id).slice(0, 8)}</span>
         </div>
         <span class="tracking-status-badge">${order.status}</span>
       </div>
