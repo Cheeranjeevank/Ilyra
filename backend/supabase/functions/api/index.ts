@@ -50,7 +50,7 @@ const pool = new Pool(dbConfig);
 // ======================
 // AUTH MIDDLEWARE
 // ======================
-function auth(req, res, next) {
+function auth(req: any, res: any, next: any) {
   const token = req.headers.authorization;
 
   if (!token) {
@@ -71,7 +71,7 @@ function auth(req, res, next) {
 // ======================
 
 // REGISTER
-app.post("/api/auth/register", async (req, res) => {
+app.post("/api/auth/register", async (req: any, res: any) => {
   try {
     const { name, email, password } = req.body;
 
@@ -100,7 +100,7 @@ app.post("/api/auth/register", async (req, res) => {
 });
 
 // LOGIN
-app.post("/api/auth/login", async (req, res) => {
+app.post("/api/auth/login", async (req: any, res: any) => {
   const { email, password } = req.body;
 
   const result = await pool.query(
@@ -137,7 +137,7 @@ app.post("/api/auth/login", async (req, res) => {
 
 // ================= CATEGORIES API =================
 
-app.get("/api/categories", async (req, res) => {
+app.get("/api/categories", async (req: any, res: any) => {
   try {
     const result = await pool.query("SELECT * FROM categories ORDER BY name ASC");
     res.json(result.rows);
@@ -147,7 +147,7 @@ app.get("/api/categories", async (req, res) => {
   }
 });
 
-app.post("/api/categories", auth, async (req, res) => {
+app.post("/api/categories", auth, async (req: any, res: any) => {
   if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied" });
   
   const { name, image } = req.body;
@@ -172,7 +172,7 @@ app.post("/api/categories", auth, async (req, res) => {
   }
 });
 
-app.delete("/api/categories/:name", auth, async (req, res) => {
+app.delete("/api/categories/:name", auth, async (req: any, res: any) => {
   if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied" });
   
   const { name } = req.params;
@@ -186,13 +186,13 @@ app.delete("/api/categories/:name", auth, async (req, res) => {
 });
 
 // ================= PRODUCTS API ======================
-app.get("/api/products", async (req, res) => {
+app.get("/api/products", async (req: any, res: any) => {
   const result = await pool.query("SELECT * FROM products ORDER BY created_at DESC");
   res.json(result.rows);
 });
 
 // ADD PRODUCT (ADMIN)
-app.post("/api/products", auth, async (req, res) => {
+app.post("/api/products", auth, async (req: any, res: any) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Admin only" });
   }
@@ -221,7 +221,7 @@ app.post("/api/products", auth, async (req, res) => {
 });
 
 // UPDATE PRODUCT (ADMIN)
-app.put("/api/products/:id", auth, async (req, res) => {
+app.put("/api/products/:id", auth, async (req: any, res: any) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Admin only" });
   }
@@ -255,7 +255,7 @@ app.put("/api/products/:id", auth, async (req, res) => {
 });
 
 // DELETE PRODUCT (ADMIN)
-app.delete("/api/products/:id", auth, async (req, res) => {
+app.delete("/api/products/:id", auth, async (req: any, res: any) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Admin only" });
   }
@@ -273,7 +273,7 @@ app.delete("/api/products/:id", auth, async (req, res) => {
 // ======================
 
 // PLACE ORDER
-app.post("/api/orders", auth, async (req, res) => {
+app.post("/api/orders", auth, async (req: any, res: any) => {
   const client = await pool.connect();
   try {
     const { items, address, payment_id = null, razorpay_order_id = null, status: reqStatus = "Placed" } = req.body;
@@ -350,7 +350,7 @@ app.post("/api/orders", auth, async (req, res) => {
 });
 
 // USER ORDERS
-app.get("/api/orders/my", auth, async (req, res) => {
+app.get("/api/orders/my", auth, async (req: any, res: any) => {
   const result = await pool.query(
     `SELECT orders.*, 
       (SELECT json_agg(json_build_object('id', oi.id, 'name', oi.name, 'price', oi.price, 'quantity', oi.quantity)) 
@@ -363,7 +363,7 @@ app.get("/api/orders/my", auth, async (req, res) => {
 });
 
 // ADMIN: ALL ORDERS
-app.get("/api/orders", auth, async (req, res) => {
+app.get("/api/orders", auth, async (req: any, res: any) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Admin only" });
   }
@@ -379,7 +379,7 @@ app.get("/api/orders", auth, async (req, res) => {
 });
 
 // ADMIN: DASHBOARD STATS
-app.get("/api/admin/stats", auth, async (req, res) => {
+app.get("/api/admin/stats", auth, async (req: any, res: any) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Admin only" });
   }
@@ -420,7 +420,7 @@ app.get("/api/admin/stats", auth, async (req, res) => {
 });
 
 // MARK PAID
-app.post("/api/orders/:id/mark-paid", auth, async (req, res) => {
+app.post("/api/orders/:id/mark-paid", auth, async (req: any, res: any) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Admin only" });
   }
@@ -452,7 +452,7 @@ app.post("/api/orders/:id/mark-paid", auth, async (req, res) => {
 });
 
 // UPDATE ORDER STATUS (Generic)
-app.put("/api/orders/:id", auth, async (req, res) => {
+app.put("/api/orders/:id", auth, async (req: any, res: any) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Admin only" });
   }
@@ -497,14 +497,14 @@ app.put("/api/orders/:id", auth, async (req, res) => {
 // ======================
 // ROOT
 // ======================
-app.get("/", (req, res) => {
+app.get("/", (req: any, res: any) => {
   res.send("Backend Running 🚀");
 });
 
 // ======================
 // USERS (ADMIN)
 // ======================
-app.get("/api/users", auth, async (req, res) => {
+app.get("/api/users", auth, async (req: any, res: any) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Admin only" });
   }
@@ -513,7 +513,7 @@ app.get("/api/users", auth, async (req, res) => {
   res.json(result.rows);
 });
 
-app.delete("/api/users/:id", auth, async (req, res) => {
+app.delete("/api/users/:id", auth, async (req: any, res: any) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Admin only" });
   }
@@ -536,11 +536,11 @@ const razorpay = isRazorpayConfigured ? new Razorpay({
   key_secret: rzpSecret
 }) : null;
 
-app.get("/api/payment/key", (req, res) => {
+app.get("/api/payment/key", (req: any, res: any) => {
   res.json({ key: rzpKey || "rzp_test_placeholder" });
 });
 
-app.post("/api/payment/create-order", auth, async (req, res) => {
+app.post("/api/payment/create-order", auth, async (req: any, res: any) => {
   try {
     const { amount } = req.body;
 
@@ -569,7 +569,7 @@ app.post("/api/payment/create-order", auth, async (req, res) => {
   }
 });
 
-app.post("/api/payment/verify", auth, async (req, res) => {
+app.post("/api/payment/verify", auth, async (req: any, res: any) => {
   try {
     const {
       razorpay_order_id,
