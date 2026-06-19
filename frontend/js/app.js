@@ -5,6 +5,17 @@ const CONFIG = {
     : "https://ilyra.onrender.com" // Live Render Node.js Server
 };
 
+// Global Fetch Interceptor for 401 Unauthorized (Expired Tokens)
+const originalFetch = window.fetch;
+window.fetch = async function(...args) {
+  const response = await originalFetch(...args);
+  if (response.status === 401 && !window.location.pathname.includes("login.html")) {
+    console.warn("Session expired. Logging out automatically.");
+    logout();
+  }
+  return response;
+};
+
 // ================= PARTICLES BACKGROUND =================
 const canvas = document.getElementById("particles");
 

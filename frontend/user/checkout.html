@@ -182,7 +182,7 @@ async function placeOrder() {
     const orderRes = await fetch(`${CONFIG.API_URL}/api/payment/create-order`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": token },
-      body: JSON.stringify({ amount: totalAmount })
+      body: JSON.stringify({ items: cart })
     });
     const orderData = await orderRes.json();
 
@@ -208,7 +208,7 @@ async function placeOrder() {
       },
       handler: async function (response) {
         console.log("Payment Successful:", response);
-        await submitFinalOrder(response.razorpay_payment_id, response.razorpay_order_id);
+        await submitFinalOrder(response.razorpay_payment_id, response.razorpay_order_id, response.razorpay_signature);
       },
       theme: { color: "#4f46e5" }
     };
@@ -221,7 +221,7 @@ async function placeOrder() {
     alert("Unable to initiate checkout. Please try again.");
   }
 
-  async function submitFinalOrder(paymentId, razorpayOrderId) {
+  async function submitFinalOrder(paymentId, razorpayOrderId, razorpaySignature = null) {
     try {
       const res = await fetch(`${CONFIG.API_URL}/api/orders`, {
         method: "POST",
@@ -231,7 +231,8 @@ async function placeOrder() {
           address: addressData,
           status: "placed",
           payment_id: paymentId,
-          razorpay_order_id: razorpayOrderId
+          razorpay_order_id: razorpayOrderId,
+          razorpay_signature: razorpaySignature
         })
       });
       const data = await res.json();

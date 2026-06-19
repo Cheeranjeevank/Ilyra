@@ -118,7 +118,8 @@ app.post("/api/auth/login", async (req, res) => {
   if (match) {
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
     );
 
     res.json({
@@ -276,7 +277,7 @@ app.delete("/api/products/:id", auth, async (req, res) => {
 app.post("/api/orders", auth, async (req, res) => {
   const client = await pool.connect();
   try {
-    const { items, address, payment_id = null, razorpay_order_id = null, status: reqStatus = "Placed" } = req.body;
+    const { items, address, payment_id = null, razorpay_order_id = null, razorpay_signature = null, status: reqStatus = "Placed" } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "No items in order" });
@@ -285,12 +286,41 @@ app.post("/api/orders", auth, async (req, res) => {
       return res.status(400).json({ success: false, message: "No address provided" });
     }
 
+    // ✅ VERIFY PAYMENT SIGNATURE BEFORE DB INSERTION
+    if (payment_id && !payment_id.startsWith("sim_pay_")) {
+      if (!isRazorpayConfigured) {
+         return res.status(400).json({ success: false, message: "Razorpay is not configured on the server." });
+      }
+      if (!razorpay_signature || !razorpay_order_id) {
+         return res.status(400).json({ success: false, message: "Missing Razorpay verification details." });
+      }
+      const body = razorpay_order_id + "|" + payment_id;
+      const expectedSignature = crypto
+        .createHmac("sha256", rzpSecret)
+        .update(body)
+        .digest("hex");
+      
+      if (expectedSignature !== razorpay_signature) {
+         return res.status(400).json({ success: false, message: "Invalid payment signature. Potential tampering detected." });
+      }
+    }
+
     await client.query("BEGIN");
 
+    // 1️⃣ Recalculate total strictly from DB
     let total = 0;
-    items.forEach(i => total += i.price * i.quantity);
+    for (let item of items) {
+      const pRes = await client.query("SELECT price, stock FROM products WHERE id=$1", [item.id]);
+      if (pRes.rows.length === 0) {
+        throw new Error(`Product not found: ${item.name}`);
+      }
+      if (pRes.rows[0].stock < item.quantity) {
+        throw new Error(`Insufficient stock for product: ${item.name}`);
+      }
+      total += pRes.rows[0].price * item.quantity;
+    }
 
-    // 1️⃣ Create order
+    // 2️⃣ Create order
     const paymentStatus = payment_id ? "paid" : "unpaid";
     
     const orderRes = await client.query(
@@ -311,7 +341,7 @@ app.post("/api/orders", auth, async (req, res) => {
 
     const orderId = orderRes.rows[0].id;
 
-    // 2️⃣ Link payment to order if it exists
+    // 3️⃣ Link payment to order if it exists
     if (payment_id) {
         await client.query(
             "UPDATE payments SET order_id = $1, status = 'captured' WHERE razorpay_payment_id = $2",
@@ -319,13 +349,8 @@ app.post("/api/orders", auth, async (req, res) => {
         );
     }
 
-    // 3️⃣ insert items and deduct stock
+    // 4️⃣ insert items and deduct stock
     for (let item of items) {
-      const pRes = await client.query("SELECT stock FROM products WHERE id=$1", [item.id]);
-      if (pRes.rows.length === 0 || pRes.rows[0].stock < item.quantity) {
-        throw new Error(`Insufficient stock for product: ${item.name}`);
-      }
-
       await client.query(
         "INSERT INTO order_items (order_id, product_id, name, price, quantity, image) VALUES ($1,$2,$3,$4,$5,$6)",
         [orderId, item.id, item.name, item.price, item.quantity, item.image]
@@ -542,20 +567,38 @@ app.get("/api/payment/key", (req, res) => {
 
 app.post("/api/payment/create-order", auth, async (req, res) => {
   try {
-    const { amount } = req.body;
+    const { items } = req.body;
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "No items provided" });
+    }
+
+    // Re-calculate total from DB to prevent tampering
+    let calculatedTotal = 0;
+    const client = await pool.connect();
+    try {
+      for (let item of items) {
+        const pRes = await client.query("SELECT price FROM products WHERE id=$1", [item.id]);
+        if (pRes.rows.length > 0) {
+          calculatedTotal += pRes.rows[0].price * item.quantity;
+        }
+      }
+    } finally {
+      client.release();
+    }
 
     if (!isRazorpayConfigured) {
       // ✅ SIMULATED ORDER FOR DEV MODE
       return res.json({
         id: "sim_order_" + Date.now(),
-        amount: amount * 100,
+        amount: calculatedTotal * 100,
         currency: "INR",
         notes: { mode: "simulated" }
       });
     }
 
     const options = {
-      amount: amount * 100,
+      amount: calculatedTotal * 100,
       currency: "INR",
       receipt: "receipt_" + Date.now()
     };
