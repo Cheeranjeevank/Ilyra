@@ -42,7 +42,7 @@ const pool = new Pool(dbConfig);
   try {
     await pool.query("SELECT NOW()");
     console.log("DB Connected ✅");
-  } catch (err) {
+  } catch (err: any) {
     console.error("DB ERROR ❌", err);
   }
 })();
@@ -93,7 +93,7 @@ app.post("/api/auth/register", async (req: any, res: any) => {
 
     res.json({ success: true });
 
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
     res.status(500).json({ success: false });
   }
@@ -141,7 +141,7 @@ app.get("/api/categories", async (req: any, res: any) => {
   try {
     const result = await pool.query("SELECT * FROM categories ORDER BY name ASC");
     res.json(result.rows);
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch categories" });
   }
@@ -166,7 +166,7 @@ app.post("/api/categories", auth, async (req: any, res: any) => {
       );
     }
     res.json(result.rows[0]);
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: "Failed to save category" });
   }
@@ -179,7 +179,7 @@ app.delete("/api/categories/:name", auth, async (req: any, res: any) => {
   try {
     await pool.query("DELETE FROM categories WHERE name = $1", [name]);
     res.json({ message: "Category deleted" });
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: "Failed to delete category" });
   }
@@ -214,7 +214,7 @@ app.post("/api/products", auth, async (req: any, res: any) => {
       [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]']
     );
     res.json({ success: true, message: "Product added" });
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
     res.status(500).json({ success: false });
   }
@@ -248,7 +248,7 @@ app.put("/api/products/:id", auth, async (req: any, res: any) => {
       [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]', req.params.id]
     );
     res.json({ success: true, message: "Product updated" });
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
     res.status(500).json({ success: false });
   }
@@ -263,7 +263,7 @@ app.delete("/api/products/:id", auth, async (req: any, res: any) => {
   try {
     await pool.query("DELETE FROM products WHERE id=$1", [req.params.id]);
     res.json({ success: true, message: "Deleted" });
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
     res.status(500).json({ success: false });
   }
@@ -340,7 +340,7 @@ app.post("/api/orders", auth, async (req: any, res: any) => {
     await client.query("COMMIT");
     res.json({ success: true, orderId });
 
-  } catch (err) {
+  } catch (err: any) {
     await client.query("ROLLBACK");
     console.error(err);
     res.status(500).json({ success: false, message: err.message });
@@ -413,7 +413,7 @@ app.get("/api/admin/stats", auth, async (req: any, res: any) => {
     stats.totalUsers = parseInt(userStats.rows[0].count);
 
     res.json(stats);
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
@@ -445,7 +445,7 @@ app.post("/api/orders/:id/mark-paid", auth, async (req: any, res: any) => {
       message: "Order marked as paid"
     });
 
-  } catch (err) {
+  } catch (err: any) {
     console.error("Mark Paid Error:", err);
     res.status(500).json({ message: "Server error" });
   }
@@ -487,7 +487,7 @@ app.put("/api/orders/:id", auth, async (req: any, res: any) => {
 
     res.json({ message: "Updated" });
 
-  } catch (err) {
+  } catch (err: any) {
     console.error("Order update error:", err.message);
     res.status(500).json({ message: "Server error during update" });
   }
@@ -563,7 +563,7 @@ app.post("/api/payment/create-order", auth, async (req: any, res: any) => {
     const order = await razorpay.orders.create(options);
     res.json(order);
 
-  } catch (err) {
+  } catch (err: any) {
     console.error("Razorpay Create Order Error:", err);
     res.status(500).json({ error: "Could not create payment order" });
   }
@@ -613,7 +613,7 @@ app.post("/api/payment/verify", auth, async (req: any, res: any) => {
       res.status(400).json({ success: false, message: "Invalid payment signature" });
     }
 
-  } catch (err) {
+  } catch (err: any) {
     console.error("Payment Verify Error:", err);
     res.status(500).json({ error: "Payment verification failed" });
   }
