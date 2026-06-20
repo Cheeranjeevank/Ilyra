@@ -587,7 +587,7 @@ app.post("/api/payment/create-order", auth, async (req: any, res: any) => {
       client.release();
     }
 
-    if (!isRazorpayConfigured) {
+    if (!razorpay) {
       // ✅ SIMULATED ORDER FOR DEV MODE
       return res.json({
         id: "sim_order_" + Date.now(),
@@ -623,7 +623,7 @@ app.post("/api/payment/verify", auth, async (req: any, res: any) => {
 
     let isValid = false;
 
-    if (!isRazorpayConfigured) {
+    if (!razorpay) {
       // ✅ SIMULATED VERIFICATION
       isValid = razorpay_payment_id.startsWith("sim_pay_");
     } else {
