@@ -144,7 +144,7 @@ app.get("/api/categories", async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to fetch categories" });
+    res.status(500).json({ error: "Failed to fetch categories", message: err.message });
   }
 });
 
