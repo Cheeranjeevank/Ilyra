@@ -239,6 +239,15 @@ async function placeOrder() {
       if (data.success) {
         localStorage.removeItem("cart");
         localStorage.removeItem("checkoutItems");
+        
+        // Clear DB cart
+        try {
+          await fetch(`${CONFIG.API_URL}/api/cart`, {
+            method: "DELETE",
+            headers: { "Authorization": token }
+          });
+        } catch(e) { console.error("Failed to clear DB cart", e); }
+        
         window.location.href = `success.html?id=${data.orderId}`;
       } else {
         alert("Payment successful but failed to record order. Please contact support.");

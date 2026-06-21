@@ -97,22 +97,35 @@
 
 <script src="../js/app.js?v=2"></script>
 
-<script>
-function loadCart() {
-  const cart = JSON.parse(localStorage.getItem("cart")) || [];
-  const container = document.getElementById("cartItems");
-  const summary = document.getElementById("cartSummary");
-  
-  if (cart.length === 0) {
-    container.innerHTML = `
-      <div class="text-center" style="padding: 4rem;">
-          <p>Your cart is empty.</p>
-          <button class="btn btn-secondary mt-4" style="width: auto;" onclick="location.href='index.html'">Start Shopping</button>
-      </div>
-    `;
-    summary.style.display = "none";
+let globalCart = [];
+
+async function loadCart() {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.href = "login.html";
     return;
   }
+
+  const container = document.getElementById("cartItems");
+  const summary = document.getElementById("cartSummary");
+
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/api/cart`, {
+      headers: { "Authorization": token }
+    });
+    const cart = await res.json();
+    globalCart = cart;
+
+    if (!Array.isArray(cart) || cart.length === 0) {
+      container.innerHTML = `
+        <div class="text-center" style="padding: 4rem;">
+            <p>Your cart is empty.</p>
+            <button class="btn btn-secondary mt-4" style="width: auto;" onclick="location.href='index.html'">Start Shopping</button>
+        </div>
+      `;
+      summary.style.display = "none";
+      return;
+    }
 
   summary.style.display = "block";
   let total = 0;
@@ -132,15 +145,15 @@ function loadCart() {
           <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.75rem;">₹${item.price} each</p>
           
           <div class="qty-control">
-            <button class="qty-btn" onclick="updateQty('${item.variantKey}', ${item.quantity - 1})">-</button>
+            <button class="qty-btn" onclick="updateQty('${item.cart_id}', ${item.quantity - 1})">-</button>
             <span style="width: 30px; text-align: center; font-weight: 600;">${item.quantity}</span>
-            <button class="qty-btn" onclick="updateQty('${item.variantKey}', ${item.quantity + 1})">+</button>
+            <button class="qty-btn" onclick="updateQty('${item.cart_id}', ${item.quantity + 1})">+</button>
           </div>
         </div>
         <div style="text-align: right;">
           <p style="font-weight: 700; margin-bottom: 0.5rem;">₹${itemTotal}</p>
           <button style="background: none; border: none; color: #ef4444; font-size: 0.875rem; cursor: pointer; font-weight: 500;" 
-                  onclick="removeItem('${item.variantKey}')">Remove</button>
+                  onclick="removeItem('${item.cart_id}')">Remove</button>
         </div>
       </div>
     `;
@@ -148,40 +161,55 @@ function loadCart() {
 
   document.getElementById("totalPrice").innerText = "₹" + total;
   document.title = `Cart (${cart.length}) | ILYRA`;
+  } catch(e) {
+    console.error(e);
+    container.innerHTML = "<p>Error loading cart.</p>";
+  }
 }
 
-function removeItem(variantKey) {
-  let cart = JSON.parse(localStorage.getItem("cart")) || [];
-  cart = cart.filter(item => item.variantKey !== variantKey);
-  localStorage.setItem("cart", JSON.stringify(cart));
-  loadCart();
-  updateCartCount();
+async function removeItem(cartId) {
+  const token = localStorage.getItem("token");
+  try {
+    await fetch(`${CONFIG.API_URL}/api/cart/item/${cartId}`, {
+      method: "DELETE",
+      headers: { "Authorization": token }
+    });
+    loadCart();
+    updateCartCount();
+  } catch(e) {
+    console.error(e);
+  }
 }
 
-function updateQty(variantKey, qty) {
+async function updateQty(cartId, qty) {
   if (qty < 1) return;
-  let cart = JSON.parse(localStorage.getItem("cart")) || [];
-  cart = cart.map(item => {
-    if (item.variantKey === variantKey) item.quantity = qty;
-    return item;
-  });
-  localStorage.setItem("cart", JSON.stringify(cart));
-  loadCart();
-  updateCartCount();
+  const token = localStorage.getItem("token");
+  try {
+    await fetch(`${CONFIG.API_URL}/api/cart/${cartId}`, {
+      method: "PUT",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": token 
+      },
+      body: JSON.stringify({ quantity: qty })
+    });
+    loadCart();
+    updateCartCount();
+  } catch(e) {
+    console.error(e);
+  }
 }
 
 function checkout() {
-  const cart = JSON.parse(localStorage.getItem("cart")) || [];
-  if (cart.length === 0) return;
-  localStorage.setItem("checkoutItems", JSON.stringify(cart));
+  if (globalCart.length === 0) return;
+  localStorage.setItem("checkoutItems", JSON.stringify(globalCart));
   window.location.href = "checkout.html";
 }
 
 async function loadRecommendations() {
   try {
     const allProducts = await fetchProducts();
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
-    const cartIds = cart.map(item => item.id);
+    const cartIds = globalCart.map(item => item.id);
     
     // Filter out items already in cart
     const suggested = allProducts.filter(p => !cartIds.includes(p.id)).slice(0, 3);

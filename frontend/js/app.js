@@ -386,40 +386,65 @@ function searchProducts() {
 }
 
 // ================= CART SYSTEM =================
-function addToCart(product, size = "M", color = "Default", variantImage = null, priceOverride = null) {
-  let cart = JSON.parse(localStorage.getItem("cart")) || [];
-  
-  // Use a composite key to distinguish between different variants of the same product
-  const variantKey = `${product.id}-${size}-${color}`;
-  const existing = cart.find(item => item.variantKey === variantKey);
-
-  if (existing) {
-    existing.quantity += 1;
-    if (variantImage) existing.image = variantImage;
-    if (priceOverride) existing.price = priceOverride;
-  } else {
-    cart.push({
-      variantKey: variantKey,
-      id: product.id,
-      name: product.name,
-      price: priceOverride || product.price,
-      image: variantImage || product.image,
-      size: size,
-      color: color,
-      quantity: 1
-    });
+async function addToCart(product, size = "M", color = "Default", variantImage = null, priceOverride = null) {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Please log in to add items to your cart.");
+    window.location.href = "login.html";
+    return;
   }
 
-  localStorage.setItem("cart", JSON.stringify(cart));
-  updateCartCount();
-  showToast(`${product.name} (${size}, ${color}) added to cart!`);
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/api/cart`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token
+      },
+      body: JSON.stringify({
+        id: product.id,
+        name: product.name,
+        price: priceOverride || product.price,
+        image: variantImage || product.image,
+        size: size,
+        color: color,
+        quantity: 1
+      })
+    });
+
+    if (res.ok) {
+      updateCartCount();
+      showToast(`${product.name} (${size}, ${color}) added to cart!`);
+    } else {
+      const data = await res.json();
+      alert(data.error || "Failed to add to cart");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Error adding to cart");
+  }
 }
 
-function updateCartCount() {
-  const cart = JSON.parse(localStorage.getItem("cart")) || [];
+async function updateCartCount() {
+  const token = localStorage.getItem("token");
   const countEl = document.getElementById("cartCount");
-  if (countEl) {
-    countEl.innerText = cart.reduce((acc, item) => acc + item.quantity, 0);
+  if (!countEl) return;
+
+  if (!token) {
+    countEl.innerText = "0";
+    return;
+  }
+
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/api/cart`, {
+      headers: { "Authorization": token }
+    });
+    if (res.ok) {
+      const cart = await res.json();
+      countEl.innerText = cart.reduce((acc, item) => acc + item.quantity, 0);
+    }
+  } catch (err) {
+    console.error("Failed to load cart count", err);
   }
 }
 

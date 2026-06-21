@@ -270,6 +270,79 @@ app.delete("/api/products/:id", auth, async (req, res) => {
   }
 });
 // ======================
+// CART
+// ======================
+
+app.get("/api/cart", auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id as cart_id, product_id as id, name, price, quantity, image, size, color FROM cart WHERE user_id=$1 ORDER BY created_at ASC",
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch cart" });
+  }
+});
+
+app.post("/api/cart", auth, async (req, res) => {
+  try {
+    const { id: product_id, name, price, quantity, image, size, color } = req.body;
+    
+    // Check if item exists in cart with same size and color
+    const existing = await pool.query(
+      "SELECT id, quantity FROM cart WHERE user_id=$1 AND product_id=$2 AND size=$3 AND color=$4",
+      [req.user.id, product_id, size || 'M', color || 'Default']
+    );
+
+    if (existing.rows.length > 0) {
+      await pool.query(
+        "UPDATE cart SET quantity = quantity + $1 WHERE id=$2",
+        [quantity, existing.rows[0].id]
+      );
+    } else {
+      await pool.query(
+        "INSERT INTO cart (user_id, product_id, name, price, quantity, image, size, color) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+        [req.user.id, product_id, name, price, quantity, image, size || 'M', color || 'Default']
+      );
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to add to cart" });
+  }
+});
+
+app.put("/api/cart/:cart_id", auth, async (req, res) => {
+  try {
+    const { quantity } = req.body;
+    await pool.query("UPDATE cart SET quantity=$1 WHERE id=$2 AND user_id=$3", [quantity, req.params.cart_id, req.user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update cart" });
+  }
+});
+
+app.delete("/api/cart/item/:cart_id", auth, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM cart WHERE id=$1 AND user_id=$2", [req.params.cart_id, req.user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete cart item" });
+  }
+});
+
+app.delete("/api/cart", auth, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM cart WHERE user_id=$1", [req.user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to clear cart" });
+  }
+});
+
+// ======================
 // ORDERS
 // ======================
 
