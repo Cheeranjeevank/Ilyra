@@ -573,18 +573,10 @@ app.post("/api/payment/create-order", auth, async (req, res) => {
       return res.status(400).json({ error: "No items provided" });
     }
 
-    // Re-calculate total from DB to prevent tampering
+    // Calculate total from items array (trusting frontend variant price)
     let calculatedTotal = 0;
-    const client = await pool.connect();
-    try {
-      for (let item of items) {
-        const pRes = await client.query("SELECT price FROM products WHERE id=$1", [item.id]);
-        if (pRes.rows.length > 0) {
-          calculatedTotal += pRes.rows[0].price * item.quantity;
-        }
-      }
-    } finally {
-      client.release();
+    for (let item of items) {
+      calculatedTotal += Number(item.price || 0) * Number(item.quantity || 1);
     }
 
     if (!isRazorpayConfigured) {
