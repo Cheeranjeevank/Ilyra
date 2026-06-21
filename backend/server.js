@@ -307,7 +307,7 @@ app.post("/api/orders", auth, async (req, res) => {
 
     await client.query("BEGIN");
 
-    // 1️⃣ Recalculate total strictly from DB
+    // 1️⃣ Recalculate total (trusting frontend variant price to match create-order)
     let total = 0;
     for (let item of items) {
       const pRes = await client.query("SELECT price, stock FROM products WHERE id=$1", [item.id]);
@@ -317,7 +317,7 @@ app.post("/api/orders", auth, async (req, res) => {
       if (pRes.rows[0].stock < item.quantity) {
         throw new Error(`Insufficient stock for product: ${item.name}`);
       }
-      total += pRes.rows[0].price * item.quantity;
+      total += Number(item.price || 0) * Number(item.quantity || 1);
     }
 
     // 2️⃣ Create order
