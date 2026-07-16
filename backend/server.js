@@ -6,6 +6,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const { sendOrderEmail } = require("./emailService");
 
 const app = express();
 
@@ -435,7 +436,24 @@ app.post("/api/orders", auth, async (req, res) => {
       );
     }
 
+    // Fetch user's registered email if not supplied in shipping address
+    let userEmail = address.email;
+    if (!userEmail) {
+      const uRes = await client.query("SELECT email FROM users WHERE id=$1", [req.user.id]);
+      if (uRes.rows.length > 0) {
+        userEmail = uRes.rows[0].email;
+      }
+    }
+
     await client.query("COMMIT");
+
+    // Trigger order confirmation email asynchronously
+    if (userEmail) {
+      sendOrderEmail(userEmail, orderRes.rows[0], items, address).catch((emailErr) => {
+        console.error("Failed to send order email asynchronously:", emailErr);
+      });
+    }
+
     res.json({ success: true, orderId });
 
   } catch (err) {
