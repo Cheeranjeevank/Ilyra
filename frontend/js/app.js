@@ -161,6 +161,8 @@ function adjustColor(hex, percent) {
 function logout() {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
+  localStorage.removeItem("checkoutItems");
+  localStorage.removeItem("cart");
   const isAdminPage = window.location.pathname.includes("/admin/");
   if (isAdminPage) {
     window.location.href = "admin-login.html";
