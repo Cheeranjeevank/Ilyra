@@ -43,6 +43,13 @@ const pool = new Pool(dbConfig);
   try {
     await pool.query("SELECT NOW()");
     console.log("DB Connected ✅");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key VARCHAR(100) PRIMARY KEY,
+        value TEXT
+      )
+    `);
+    console.log("Settings table verified/created ✅");
   } catch (err) {
     console.error("DB ERROR ❌", err);
   }
@@ -609,6 +616,38 @@ app.put("/api/orders/:id", auth, async (req, res) => {
   }
 });
 
+
+// ======================
+// SETTINGS API
+// ======================
+app.get("/api/settings/:key", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT value FROM settings WHERE key = $1", [req.params.key]);
+    if (result.rows.length > 0) {
+      res.json({ value: result.rows[0].value });
+    } else {
+      res.json({ value: null });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch setting", message: err.message });
+  }
+});
+
+app.post("/api/settings/:key", auth, async (req, res) => {
+  if (req.user.role !== "admin") return res.status(403).json({ error: "Access denied" });
+  const { value } = req.body;
+  try {
+    await pool.query(
+      "INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+      [req.params.key, value]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save setting", message: err.message });
+  }
+});
 
 // ======================
 // ROOT

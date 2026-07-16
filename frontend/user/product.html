@@ -186,6 +186,26 @@
   </section>
 </main>
 
+<!-- SIZE CHART MODAL -->
+<div id="sizeChartModal" class="modal" style="
+  display: none; position: fixed; z-index: 10002; left: 0; top: 0; width: 100%; height: 100%; 
+  overflow: auto; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
+  align-items: center; justify-content: center;
+">
+  <div class="card glass" style="
+    max-width: 600px; width: 90%; margin: auto; padding: 2rem; position: relative; 
+    border-radius: var(--border-radius-lg); text-align: center; background: var(--surface-color);
+    border: 1px solid var(--border-color);
+  ">
+    <button onclick="closeSizeChartModal()" style="
+      position: absolute; top: 1rem; right: 1rem; background: none; border: none; 
+      font-size: 1.5rem; color: var(--text-primary); cursor: pointer;
+    ">×</button>
+    <h2 style="margin-bottom: 1.5rem;">Size Chart</h2>
+    <img id="sizeChartModalImg" style="width: 100%; border-radius: var(--border-radius-sm); margin-bottom: 1rem;" src="">
+  </div>
+</div>
+
 <script src="../js/app.js?v=2"></script>
 
 <script>
@@ -231,11 +251,20 @@ async function loadProduct() {
       selectedPrice = sizeVariants[0]?.price || product.price;
       const initialOriginalPrice = sizeVariants[0]?.original_price || product.original_price;
 
+      let initialImages = [];
       if (colors.length > 0) {
         selectedColor = colors[0].color || colors[0].name;
-        selectedVariantImage = colors[0].image || product.image;
+        if (Array.isArray(colors[0].images) && colors[0].images.length > 0) {
+          initialImages = colors[0].images;
+        } else if (colors[0].image) {
+          initialImages = [colors[0].image];
+        } else {
+          initialImages = [product.image];
+        }
+        selectedVariantImage = initialImages[0] || product.image;
       } else {
         selectedColor = "Standard";
+        initialImages = [product.image];
         selectedVariantImage = product.image;
       }
 
@@ -247,7 +276,7 @@ async function loadProduct() {
                    style="width: 100%; display: block; transition: var(--transition);">
             </div>
             <div id="imageGallery" style="display:flex; gap:1rem; margin-top:1.5rem; flex-wrap: wrap;">
-              ${(product.images || [product.image]).map(img => `
+              ${initialImages.map(img => `
                 <div class="card" style="padding: 0.5rem; width: 80px; cursor: pointer;" onclick="updateMainImage('${img}')">
                   <img src="${img}" style="width: 100%; border-radius: var(--border-radius-sm);">
                 </div>
@@ -285,23 +314,29 @@ async function loadProduct() {
               <div class="variant-selector">
                 <label class="variant-label">Color: <span id="colorNameDisplay" style="color: var(--text-primary);">${selectedColor}</span></label>
                 <div class="color-swatches">
-                  ${colors.map((c, index) => `
-                    <div class="swatch-container ${index === 0 ? 'active' : ''}" 
-                         onclick="selectColor('${c.color || c.name}', '${c.image}', this)">
-                      ${c.image 
-                        ? `<img src="${c.image}" class="swatch" style="object-fit: cover;">`
-                        : `<div class="swatch" style="background: ${c.hex || '#ccc'};"></div>`
-                      }
-                      <span class="swatch-name">${c.color || c.name}</span>
-                    </div>
-                  `).join("")}
+                  ${colors.map((c, index) => {
+                    const swatchImg = (Array.isArray(c.images) && c.images.length > 0) ? c.images[0] : c.image;
+                    return `
+                      <div class="swatch-container ${index === 0 ? 'active' : ''}" 
+                           onclick="selectColor('${c.color || c.name}', this)">
+                        ${swatchImg 
+                          ? `<img src="${swatchImg}" class="swatch" style="object-fit: cover;">`
+                          : `<div class="swatch" style="background: ${c.hex || '#ccc'};"></div>`
+                        }
+                        <span class="swatch-name">${c.color || c.name}</span>
+                      </div>
+                    `;
+                  }).join("")}
                 </div>
               </div>
             ` : ''}
 
             <!-- SIZE SELECTOR -->
             <div class="variant-selector">
-              <label class="variant-label">Select Size</label>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <label class="variant-label" style="margin-bottom: 0;">Select Size</label>
+                <span id="sizeChartLink" style="font-size: 0.85rem; color: var(--accent-color); cursor: pointer; font-weight: 600; text-decoration: underline; display: none;" onclick="openSizeChartModal()">Size Chart</span>
+              </div>
               <div class="size-chips">
                 ${sizeVariants.map((sv, index) => `
                   <div class="size-chip ${index === 0 ? 'active' : ''}" onclick="selectSize('${sv.size}', ${sv.price || 'null'}, ${sv.original_price || 'null'}, this)">${sv.size}</div>
@@ -419,6 +454,21 @@ async function loadProduct() {
       `;
       loadRelated(product.id, productsData);
       startCountdown();
+
+      // Fetch size chart setting
+      try {
+        const settingsRes = await fetch(`${CONFIG.API_URL}/api/settings/size_chart`);
+        const settingsData = await settingsRes.json();
+        if (settingsData && settingsData.value) {
+          const sizeChartLink = document.getElementById("sizeChartLink");
+          if (sizeChartLink) {
+            sizeChartLink.style.display = "inline";
+            document.getElementById("sizeChartModalImg").src = settingsData.value;
+          }
+        }
+      } catch(e) {
+        console.error("Failed to load size chart", e);
+      }
     } else {
       document.getElementById("productDetails").innerHTML = "<h2>Product not found</h2>";
     }
@@ -485,13 +535,44 @@ function selectSize(size, overridePrice, overrideOriginalPrice, el) {
   el.classList.add('active');
 }
 
-function selectColor(color, image, el) {
-  selectedColor = color;
-  selectedVariantImage = image && image !== "undefined" ? image : currentProduct.image;
-  document.getElementById('colorNameDisplay').innerText = color;
+function selectColor(colorName, el) {
+  selectedColor = colorName;
+  const colorObj = currentProduct.variants.find(v => (v.color || v.name) === colorName);
+  let imagesToShow = [];
+  if (colorObj && Array.isArray(colorObj.images) && colorObj.images.length > 0) {
+    imagesToShow = colorObj.images;
+  } else if (colorObj && colorObj.image) {
+    imagesToShow = [colorObj.image];
+  } else {
+    imagesToShow = [currentProduct.image];
+  }
+  
+  selectedVariantImage = imagesToShow[0] || currentProduct.image;
+  document.getElementById('colorNameDisplay').innerText = colorName;
   document.querySelectorAll('.swatch-container').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
+  
   if (selectedVariantImage) updateMainImage(selectedVariantImage);
+
+  // Update Image Gallery thumbnails
+  const galleryEl = document.getElementById('imageGallery');
+  if (galleryEl) {
+    galleryEl.innerHTML = imagesToShow.map(img => `
+      <div class="card" style="padding: 0.5rem; width: 80px; cursor: pointer;" onclick="updateMainImage('${img}')">
+        <img src="${img}" style="width: 100%; border-radius: var(--border-radius-sm);">
+      </div>
+    `).join("");
+  }
+}
+
+function openSizeChartModal() {
+  const modal = document.getElementById('sizeChartModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeSizeChartModal() {
+  const modal = document.getElementById('sizeChartModal');
+  if (modal) modal.style.display = 'none';
 }
 
 function updateQuantity(change) {

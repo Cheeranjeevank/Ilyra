@@ -159,8 +159,8 @@
               <input id="newVariantColor" placeholder="E.g. Navy Blue">
             </div>
             <div style="flex: 1;">
-              <label>Color Image</label>
-              <input type="file" id="newVariantImage">
+              <label>Color Images</label>
+              <input type="file" id="newVariantImage" multiple>
             </div>
             <button class="btn btn-secondary" style="width: auto;" onclick="addVariant()">Add Variant</button>
           </div>
@@ -171,6 +171,21 @@
         <img id="preview" style="max-height: 100px; border-radius: var(--border-radius-sm); display: none; border: 1px solid var(--border-color);">
         <button id="submitBtn" class="btn" style="width: auto;" onclick="saveProduct()">Add Product</button>
         <button id="cancelBtn" class="btn btn-secondary" style="width: auto; display: none;" onclick="cancelEdit()">Cancel Edit</button>
+      </div>
+    </section>
+
+    <!-- GLOBAL SIZE CHART -->
+    <section class="card mb-4 fade-in">
+      <h2 style="margin-bottom: 0.5rem;">Global Size Chart</h2>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.5rem;">Upload a default size chart image that will be shown to customers for all products.</p>
+      <div style="display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
+        <div>
+          <input type="file" id="globalSizeChartFile" accept="image/*">
+        </div>
+        <div>
+          <img id="globalSizeChartPreview" style="max-height: 100px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); display: none;">
+        </div>
+        <button class="btn" id="saveSizeChartBtn" style="width: auto;" onclick="saveGlobalSizeChart()">Save Size Chart</button>
       </div>
     </section>
 
@@ -265,7 +280,7 @@ document.getElementById("categoryImageFile").addEventListener("change", function
   }
 });
 
-function addVariant() {
+async function addVariant() {
   const colorInput = document.getElementById("newVariantColor");
   const fileInput = document.getElementById("newVariantImage");
   
@@ -274,16 +289,26 @@ function addVariant() {
     return;
   }
   
-  const file = fileInput.files[0];
-  if (file) {
-    resizeImage(file, 800, 800, function(base64Str) {
-      currentVariants.push({ color: colorInput.value, image: base64Str });
-      colorInput.value = "";
-      fileInput.value = "";
-      renderVariants();
-    });
+  const files = fileInput.files;
+  const colorVal = colorInput.value;
+  
+  if (files && files.length > 0) {
+    const resizedImages = [];
+    for (let i = 0; i < files.length; i++) {
+      const base64 = await new Promise((resolve) => {
+        resizeImage(files[i], 800, 800, function(base64Str) {
+          resolve(base64Str);
+        });
+      });
+      resizedImages.push(base64);
+    }
+    
+    currentVariants.push({ color: colorVal, images: resizedImages });
+    colorInput.value = "";
+    fileInput.value = "";
+    renderVariants();
   } else {
-    currentVariants.push({ color: colorInput.value, image: null });
+    currentVariants.push({ color: colorVal, images: [] });
     colorInput.value = "";
     renderVariants();
   }
@@ -337,15 +362,24 @@ function renderSizeVariants() {
 
 function renderVariants() {
   const container = document.getElementById("variantsContainer");
-  container.innerHTML = currentVariants.map((v, i) => `
-    <div style="display: flex; align-items: center; justify-content: space-between; background: var(--surface-color); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: var(--border-radius-sm);">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        ${v.image ? `<img src="${v.image}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;">` : `<div style="width:40px; height:40px; background:#ddd; border-radius:4px;"></div>`}
-        <span style="font-weight: 600;">${v.color}</span>
+  container.innerHTML = currentVariants.map((v, i) => {
+    const images = Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []);
+    const imgHtml = images.map(img => `
+      <img src="${img}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover; border: 1px solid var(--border-color);">
+    `).join("");
+
+    return `
+      <div style="display: flex; align-items: center; justify-content: space-between; background: var(--surface-color); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: var(--border-radius-sm);">
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div style="display: flex; gap: 0.25rem;">
+            ${imgHtml.length > 0 ? imgHtml : `<div style="width:40px; height:40px; background:#ddd; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text-muted);">No Img</div>`}
+          </div>
+          <span style="font-weight: 600;">${v.color}</span>
+        </div>
+        <button class="btn btn-secondary" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: #ef4444; color: #ef4444;" onclick="removeVariant(${i})">Remove</button>
       </div>
-      <button class="btn btn-secondary" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: #ef4444; color: #ef4444;" onclick="removeVariant(${i})">Remove</button>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
 async function loadProducts() {
@@ -583,7 +617,77 @@ function renderAnalytics() {
 }
 
 
+let sizeChartImageBase64 = null;
+
+document.getElementById("globalSizeChartFile").addEventListener("change", function() {
+  const file = this.files[0];
+  if (file) {
+    resizeImage(file, 1000, 1000, function(base64Str) {
+      sizeChartImageBase64 = base64Str;
+      const preview = document.getElementById("globalSizeChartPreview");
+      preview.src = base64Str;
+      preview.style.display = "block";
+    });
+  } else {
+    sizeChartImageBase64 = null;
+    const preview = document.getElementById("globalSizeChartPreview");
+    preview.src = "";
+    preview.style.display = "none";
+  }
+});
+
+async function saveGlobalSizeChart() {
+  if (!sizeChartImageBase64) {
+    showToast("Please select a size chart image to upload.");
+    return;
+  }
+  
+  const token = localStorage.getItem("token");
+  const saveBtn = document.getElementById("saveSizeChartBtn");
+  saveBtn.disabled = true;
+  saveBtn.innerText = "Saving...";
+  
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/api/settings/size_chart`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": token
+      },
+      body: JSON.stringify({ value: sizeChartImageBase64 })
+    });
+    
+    if (res.ok) {
+      showToast("Size chart updated successfully!");
+    } else {
+      showToast("Failed to save size chart.");
+    }
+  } catch (err) {
+    console.error(err);
+    showToast("Error updating size chart.");
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerText = "Save Size Chart";
+  }
+}
+
+async function loadGlobalSizeChart() {
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/api/settings/size_chart`);
+    const data = await res.json();
+    if (data && data.value) {
+      sizeChartImageBase64 = data.value;
+      const preview = document.getElementById("globalSizeChartPreview");
+      preview.src = data.value;
+      preview.style.display = "block";
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 loadProducts();
+loadGlobalSizeChart();
 </script>
 
 </body>
