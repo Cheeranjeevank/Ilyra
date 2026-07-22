@@ -125,6 +125,17 @@
           <input type="file" id="imageFile">
         </div>
 
+        <!-- CUSTOMIZATION TOGGLE -->
+        <div style="grid-column: 1 / -1; background: rgba(79, 70, 229, 0.05); padding: 1rem; border-radius: var(--border-radius-sm); border: 1px dashed var(--accent-color); margin-top: 0.5rem;">
+          <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; margin: 0; font-weight: 700; color: var(--accent-color);">
+            <input type="checkbox" id="is_customizable" style="width: 20px; height: 20px; accent-color: var(--accent-color); cursor: pointer;">
+            <span>✨ Enable Custom Image/Photo Upload for Customer (Customizable Product)</span>
+          </label>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.5rem 0 0 2.25rem;">
+            When checked, customers will be able to upload their photo or design on the product detail page and preview it live.
+          </p>
+        </div>
+
         <!-- SIZE MANAGER -->
         <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
           <h3 style="margin-bottom: 0.5rem;">Sizes & Pricing</h3>
@@ -407,15 +418,18 @@ function renderProducts() {
     const badgeClass = p.stock === 0 ? 'badge-danger' : (isLowStock ? 'badge-warning' : 'badge-success');
     const badgeText = p.stock === 0 ? 'Out of Stock' : (isLowStock ? `Low Stock (${p.stock})` : `In Stock (${p.stock})`);
 
+    const isCustom = p.is_customizable || (p.category && p.category.toLowerCase().includes("custom"));
+
     container.innerHTML += `
       <div class="card fade-in" style="${isLowStock ? 'border-color: #f59e0b;' : ''}">
         <img src="${p.image || 'https://via.placeholder.com/200'}" alt="${p.name}">
         <h3>${p.name}</h3>
         <p style="color: var(--accent-color); font-weight: 700;">₹${p.price}</p>
         
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.25rem;">
           <span class="badge ${badgeClass}">${badgeText}</span>
           <span style="font-size: 0.75rem; color: var(--text-muted);">${p.category}</span>
+          ${isCustom ? `<span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">✨ Customizable</span>` : ''}
         </div>
         ${p.original_price ? `<p style="color: var(--text-muted); font-size: 0.8rem; text-decoration: line-through;">MRP: ₹${p.original_price}</p>` : ''}
         
@@ -442,6 +456,7 @@ function editProduct(p) {
   document.getElementById("description").value = p.description || "";
   document.getElementById("category").value = p.category || "";
   document.getElementById("stock").value = p.stock || 0;
+  document.getElementById("is_customizable").checked = !!(p.is_customizable || (p.category && p.category.toLowerCase().includes("custom")));
   
   currentVariants = Array.isArray(p.variants) ? [...p.variants] : [];
   currentSizeVariants = Array.isArray(p.size_prices) ? [...p.size_prices] : [];
@@ -481,6 +496,7 @@ function cancelEdit() {
   document.getElementById("description").value = "";
   document.getElementById("category").value = "";
   document.getElementById("stock").value = "";
+  document.getElementById("is_customizable").checked = false;
   document.getElementById("categoryImageFile").value = "";
   document.getElementById("imageFile").value = "";
   document.getElementById("preview").style.display = "none";
@@ -501,6 +517,7 @@ async function saveProduct() {
   const description = document.getElementById("description").value;
   const stock = document.getElementById("stock").value;
   const category = document.getElementById("category").value;
+  const is_customizable = document.getElementById("is_customizable").checked;
   
   const sizes = currentSizeVariants.map(v => v.size).join(", ");
   const colors = currentVariants.map(v => v.color).join(", ");
@@ -534,7 +551,8 @@ async function saveProduct() {
         image: previewImg, stock: parseInt(stock), 
         category, category_image: categoryImageBase64,
         sizes, colors, variants: currentVariants,
-        size_prices: currentSizeVariants
+        size_prices: currentSizeVariants,
+        is_customizable
       })
     });
 

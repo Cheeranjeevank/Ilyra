@@ -51,12 +51,13 @@ const pool = new Pool(dbConfig);
     `);
     console.log("Settings table verified/created ✅");
 
-    // Add custom_image column to cart and order_items tables
+    // Add custom_image column to cart and order_items tables & is_customizable to products
     await pool.query(`
       ALTER TABLE cart ADD COLUMN IF NOT EXISTS custom_image TEXT;
       ALTER TABLE order_items ADD COLUMN IF NOT EXISTS custom_image TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS is_customizable BOOLEAN DEFAULT false;
     `);
-    console.log("Database schema migrated for custom t-shirts ✅");
+    console.log("Database schema migrated for custom t-shirts & product customization settings ✅");
   } catch (err) {
     console.error("DB ERROR ❌", err);
   }
@@ -213,7 +214,7 @@ app.post("/api/products", auth, async (req, res) => {
     return res.status(403).json({ message: "Admin only" });
   }
 
-  const { name, price, image, stock, category, category_image, sizes, colors, description, original_price, variants, size_prices } = req.body;
+  const { name, price, image, stock, category, category_image, sizes, colors, description, original_price, variants, size_prices, is_customizable } = req.body;
 
   try {
     if (category && category_image) {
@@ -226,8 +227,8 @@ app.post("/api/products", auth, async (req, res) => {
     }
 
     await pool.query(
-      "INSERT INTO products (name, price, image, stock, category, sizes, colors, description, original_price, variants, size_prices) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
-      [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]']
+      "INSERT INTO products (name, price, image, stock, category, sizes, colors, description, original_price, variants, size_prices, is_customizable) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",
+      [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]', !!is_customizable]
     );
     res.json({ success: true, message: "Product added" });
   } catch (err) {
@@ -242,7 +243,7 @@ app.put("/api/products/:id", auth, async (req, res) => {
     return res.status(403).json({ message: "Admin only" });
   }
 
-  const { name, price, image, stock, category, category_image, sizes, colors, description, original_price, variants, size_prices } = req.body;
+  const { name, price, image, stock, category, category_image, sizes, colors, description, original_price, variants, size_prices, is_customizable } = req.body;
 
   try {
     if (category && category_image) {
@@ -259,9 +260,9 @@ app.put("/api/products/:id", auth, async (req, res) => {
         name=$1, price=$2, image=$3, stock=$4, 
         category=$5, sizes=$6, colors=$7, 
         description=$8, original_price=$9, variants=$10, size_prices=$11,
-        updated_at=NOW() 
-       WHERE id=$12`,
-      [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]', req.params.id]
+        is_customizable=$12, updated_at=NOW() 
+       WHERE id=$13`,
+      [name, price, image, stock || 0, category || "", sizes || "", colors || "", description || "", original_price || null, variants ? JSON.stringify(variants) : '[]', size_prices ? JSON.stringify(size_prices) : '[]', !!is_customizable, req.params.id]
     );
     res.json({ success: true, message: "Product updated" });
   } catch (err) {

@@ -276,8 +276,12 @@ async function loadProduct() {
 
       const catLower = (product.category || "").toLowerCase();
       const nameLower = (product.name || "").toLowerCase();
-      const isStrictCustom = catLower.includes("custom") || nameLower.includes("custom") || catLower.includes("personal") || nameLower.includes("personal");
-      const showUploadBox = true; // Always enable custom design upload widget for customers
+      const isCustomizable = product.is_customizable === true || 
+                             catLower.includes("custom") || 
+                             nameLower.includes("custom") || 
+                             catLower.includes("personal") || 
+                             nameLower.includes("personal");
+      const showUploadBox = isCustomizable;
 
       document.getElementById("productDetails").innerHTML = `
         <div class="product-split" style="display:flex; gap:4rem; flex-wrap:wrap; align-items: flex-start;">
@@ -639,9 +643,9 @@ function handleAddToCart() {
   
   const catLower = (currentProduct.category || "").toLowerCase();
   const nameLower = (currentProduct.name || "").toLowerCase();
-  const isStrictCustom = catLower.includes("custom") || nameLower.includes("custom");
+  const isCustomizable = currentProduct.is_customizable === true || catLower.includes("custom") || nameLower.includes("custom");
 
-  if (isStrictCustom && !customDesignBase64) {
+  if (isCustomizable && !customDesignBase64) {
     alert("Please upload your design or photo first to customize this T-shirt.");
     return;
   }
