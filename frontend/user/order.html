@@ -82,10 +82,36 @@ async function loadOrders() {
             <p style="font-weight: 600;">${new Date(o.date || o.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
         </div>
+
+        <!-- ITEMS ORDERED SECTION -->
+        <div style="margin-bottom: 1.5rem;">
+          <p style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 0.75rem;">Items Ordered</p>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            ${o.items ? o.items.map(item => `
+              <div style="display: flex; align-items: center; gap: 1rem; background: var(--surface-hover); padding: 0.75rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+                <div style="position: relative; width: 45px; height: 45px; flex-shrink: 0;">
+                  <img src="${item.image || 'https://via.placeholder.com/45'}" style="width: 45px; height: 45px; border-radius: 4px; object-fit: cover;">
+                  ${item.custom_image ? `
+                    <img src="${item.custom_image}" style="position: absolute; bottom: -2px; right: -2px; width: 20px; height: 20px; border-radius: 3px; object-fit: cover; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); cursor: pointer;" onclick="window.open('${item.custom_image}', '_blank')" title="Click to view full custom design">
+                  ` : ''}
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                  <p style="font-size: 0.85rem; font-weight: 700; margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; color: var(--text-primary);">${item.name}</p>
+                  <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <span>Qty: ${item.quantity}</span>
+                    <span>•</span>
+                    <span>₹${item.price} each</span>
+                    ${item.custom_image ? `<span style="color: var(--accent-color); font-weight: 600; font-size: 0.7rem; background: rgba(79, 70, 229, 0.1); padding: 0.05rem 0.25rem; border-radius: 3px;">Custom Design</span>` : ''}
+                  </p>
+                </div>
+              </div>
+            `).join("") : ''}
+          </div>
+        </div>
         
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 1rem;">
           <div>
-            <p style="color: var(--text-secondary);">Total Amount</p>
+            <p style="color: var(--text-secondary); margin-bottom: 0.25rem;">Total Amount</p>
             <p style="font-size: 1.25rem; font-weight: 700; color: var(--accent-color);">₹${o.total}</p>
           </div>
           <div style="text-align: right;">

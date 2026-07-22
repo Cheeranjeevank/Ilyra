@@ -1,3 +1,8 @@
+// Ensure trailing slash for directory routes to preserve relative navigation
+if (window.location.pathname === "/user" || window.location.pathname === "/admin") {
+  window.location.replace(window.location.pathname + "/" + window.location.search + window.location.hash);
+}
+
 const CONFIG = {
   // If running locally, use localhost. If on Netlify/Cloud, use the live backend placeholder.
   API_URL: window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
@@ -349,6 +354,11 @@ function filterByCategory(category) {
   }
 }
 
+function goToProduct(id) {
+  localStorage.setItem("selectedProductId", id);
+  location.href = "product.html?id=" + id;
+}
+
 function renderProducts(products) {
   const container = document.getElementById("products");
   if (!container) return;
@@ -366,7 +376,7 @@ function renderProducts(products) {
         ${p.stock === 0 ? `
           <button class="btn" style="background:var(--text-muted); cursor:not-allowed;" disabled>Out of Stock</button>
         ` : `
-          <button class="btn" style="margin-bottom: 0.5rem;" onclick="location.href='product.html?id=${p.id}'">View Details</button>
+          <button class="btn" style="margin-bottom: 0.5rem;" onclick="goToProduct('${p.id}')">View Details</button>
           <button class="btn btn-secondary" onclick='addToCart(${JSON.stringify(p)})'>Add to Cart</button>
         `}
       </div>
@@ -388,11 +398,12 @@ function searchProducts() {
 }
 
 // ================= CART SYSTEM =================
-async function addToCart(product, size = "M", color = "Default", variantImage = null, priceOverride = null) {
+async function addToCart(product, size = "M", color = "Default", variantImage = null, priceOverride = null, customImage = null) {
   const token = localStorage.getItem("token");
   if (!token) {
     alert("Please log in to add items to your cart.");
-    window.location.href = "login.html";
+    const isUserDir = window.location.pathname.includes("/user/");
+    window.location.href = isUserDir ? "../login.html" : "login.html";
     return;
   }
 
@@ -410,7 +421,8 @@ async function addToCart(product, size = "M", color = "Default", variantImage = 
         image: variantImage || product.image,
         size: size,
         color: color,
-        quantity: 1
+        quantity: 1,
+        custom_image: customImage
       })
     });
 

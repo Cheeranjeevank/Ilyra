@@ -50,6 +50,13 @@ const pool = new Pool(dbConfig);
       )
     `);
     console.log("Settings table verified/created ✅");
+
+    // Add custom_image column to cart and order_items tables
+    await pool.query(`
+      ALTER TABLE cart ADD COLUMN IF NOT EXISTS custom_image TEXT;
+      ALTER TABLE order_items ADD COLUMN IF NOT EXISTS custom_image TEXT;
+    `);
+    console.log("Database schema migrated for custom t-shirts ✅");
   } catch (err) {
     console.error("DB ERROR ❌", err);
   }
@@ -284,7 +291,7 @@ app.delete("/api/products/:id", auth, async (req, res) => {
 app.get("/api/cart", auth, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id as cart_id, product_id as id, name, price, quantity, image, size, color FROM cart WHERE user_id=$1 ORDER BY created_at ASC",
+      "SELECT id as cart_id, product_id as id, name, price, quantity, image, size, color, custom_image FROM cart WHERE user_id=$1 ORDER BY created_at ASC",
       [req.user.id]
     );
     res.json(result.rows);
@@ -296,13 +303,21 @@ app.get("/api/cart", auth, async (req, res) => {
 
 app.post("/api/cart", auth, async (req, res) => {
   try {
-    const { id: product_id, name, price, quantity, image, size, color } = req.body;
+    const { id: product_id, name, price, quantity, image, size, color, custom_image } = req.body;
     
-    // Check if item exists in cart with same size and color
-    const existing = await pool.query(
-      "SELECT id, quantity FROM cart WHERE user_id=$1 AND product_id=$2 AND size=$3 AND color=$4",
-      [req.user.id, product_id, size || 'M', color || 'Default']
-    );
+    // Check if item exists in cart with same size, color and custom_image
+    let existing;
+    if (custom_image) {
+      existing = await pool.query(
+        "SELECT id, quantity FROM cart WHERE user_id=$1 AND product_id=$2 AND size=$3 AND color=$4 AND custom_image=$5",
+        [req.user.id, product_id, size || 'M', color || 'Default', custom_image]
+      );
+    } else {
+      existing = await pool.query(
+        "SELECT id, quantity FROM cart WHERE user_id=$1 AND product_id=$2 AND size=$3 AND color=$4 AND (custom_image IS NULL OR custom_image = '')",
+        [req.user.id, product_id, size || 'M', color || 'Default']
+      );
+    }
 
     if (existing.rows.length > 0) {
       await pool.query(
@@ -311,8 +326,8 @@ app.post("/api/cart", auth, async (req, res) => {
       );
     } else {
       await pool.query(
-        "INSERT INTO cart (user_id, product_id, name, price, quantity, image, size, color) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-        [req.user.id, product_id, name, price, quantity, image, size || 'M', color || 'Default']
+        "INSERT INTO cart (user_id, product_id, name, price, quantity, image, size, color, custom_image) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+        [req.user.id, product_id, name, price, quantity, image, size || 'M', color || 'Default', custom_image || null]
       );
     }
     res.json({ success: true });
@@ -433,8 +448,8 @@ app.post("/api/orders", auth, async (req, res) => {
     // 4️⃣ insert items and deduct stock
     for (let item of items) {
       await client.query(
-        "INSERT INTO order_items (order_id, product_id, name, price, quantity, image) VALUES ($1,$2,$3,$4,$5,$6)",
-        [orderId, item.id, item.name, item.price, item.quantity, item.image]
+        "INSERT INTO order_items (order_id, product_id, name, price, quantity, image, custom_image) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+        [orderId, item.id, item.name, item.price, item.quantity, item.image, item.custom_image || null]
       );
 
       await client.query(
@@ -476,7 +491,7 @@ app.post("/api/orders", auth, async (req, res) => {
 app.get("/api/orders/my", auth, async (req, res) => {
   const result = await pool.query(
     `SELECT orders.*, 
-      (SELECT json_agg(json_build_object('id', oi.id, 'name', oi.name, 'price', oi.price, 'quantity', oi.quantity)) 
+      (SELECT json_agg(json_build_object('id', oi.id, 'name', oi.name, 'price', oi.price, 'quantity', oi.quantity, 'image', oi.image, 'custom_image', oi.custom_image)) 
        FROM order_items oi WHERE oi.order_id = orders.id) as items 
      FROM orders WHERE user_id=$1 ORDER BY created_at DESC`,
     [req.user.id]
@@ -493,7 +508,7 @@ app.get("/api/orders", auth, async (req, res) => {
 
   const result = await pool.query(
     `SELECT orders.*, 
-      (SELECT json_agg(json_build_object('id', oi.id, 'name', oi.name, 'price', oi.price, 'quantity', oi.quantity)) 
+      (SELECT json_agg(json_build_object('id', oi.id, 'name', oi.name, 'price', oi.price, 'quantity', oi.quantity, 'image', oi.image, 'custom_image', oi.custom_image)) 
        FROM order_items oi WHERE oi.order_id = orders.id) as items 
      FROM orders ORDER BY created_at DESC`
   );

@@ -139,10 +139,19 @@ async function loadCart() {
         <img src="${item.image || 'https://via.placeholder.com/100'}" alt="${item.name}">
         <div style="flex: 1;">
           <h3 style="margin-bottom: 0.25rem;">${item.name}</h3>
-          <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">
+          <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem; align-items: center; flex-wrap: wrap;">
             <span style="font-size: 0.75rem; background: var(--surface-hover); padding: 0.2rem 0.5rem; border-radius: 4px; color: var(--text-secondary);">Size: <strong>${item.size}</strong></span>
             <span style="font-size: 0.75rem; background: var(--surface-hover); padding: 0.2rem 0.5rem; border-radius: 4px; color: var(--text-secondary);">Color: <strong>${item.color}</strong></span>
+            ${item.custom_image ? `
+              <span style="font-size: 0.75rem; background: rgba(79, 70, 229, 0.1); padding: 0.2rem 0.5rem; border-radius: 4px; color: var(--accent-color); font-weight: 600;">Custom Design Uploaded</span>
+            ` : ''}
           </div>
+          ${item.custom_image ? `
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+              <span style="font-size: 0.8rem; color: var(--text-secondary);">Design:</span>
+              <img src="${item.custom_image}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover; border: 1px solid var(--border-color); cursor: pointer;" onclick="window.open('${item.custom_image}', '_blank')" title="Click to view full design">
+            </div>
+          ` : ''}
           <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.75rem;">₹${item.price} each</p>
           
           <div class="qty-control">

@@ -207,7 +207,9 @@
 <script src="../js/app.js?v=2"></script>
 
 <script>
-if (!localStorage.getItem("token")) {
+const userData = JSON.parse(localStorage.getItem("user"));
+const token = localStorage.getItem("token");
+if (!token || !userData || userData.role !== "admin") {
   window.location.href = "admin-login.html";
 }
 

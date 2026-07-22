@@ -210,13 +210,19 @@
 
 <script>
 const params = new URLSearchParams(window.location.search);
-const id = params.get("id");
+let id = params.get("id");
+if (id) {
+  localStorage.setItem("selectedProductId", id);
+} else {
+  id = localStorage.getItem("selectedProductId");
+}
 let currentProduct = null;
 let selectedSize = null;
 let selectedColor = null;
 let selectedVariantImage = null;
 let selectedQuantity = 1;
 let selectedPrice = null;
+let customDesignBase64 = null;
 
 async function loadProduct() {
   if (!id) {
@@ -268,12 +274,35 @@ async function loadProduct() {
         selectedVariantImage = product.image;
       }
 
+      const catLower = (product.category || "").toLowerCase();
+      const nameLower = (product.name || "").toLowerCase();
+      const isStrictCustom = catLower.includes("custom") || nameLower.includes("custom") || catLower.includes("personal") || nameLower.includes("personal");
+      const showUploadBox = true; // Always enable custom design upload widget for customers
+
       document.getElementById("productDetails").innerHTML = `
         <div class="product-split" style="display:flex; gap:4rem; flex-wrap:wrap; align-items: flex-start;">
           <div class="product-image-col" style="flex: 1; min-width: 300px;">
             <div class="card" style="padding: 0; overflow: hidden; border-radius: var(--border-radius-lg); position: sticky; top: 120px;">
-              <img id="mainImg" src="${selectedVariantImage || product.image || 'https://via.placeholder.com/600'}" 
-                   style="width: 100%; display: block; transition: var(--transition);">
+              <div style="position: relative; width: 100%; display: block;">
+                <img id="mainImg" src="${selectedVariantImage || product.image || 'https://via.placeholder.com/600'}" 
+                     style="width: 100%; display: block; transition: var(--transition);">
+                <div id="mockupOverlay" style="
+                  position: absolute; 
+                  top: 50%; 
+                  left: 50%; 
+                  transform: translate(-50%, -50%); 
+                  width: 32%; 
+                  height: 32%; 
+                  pointer-events: none; 
+                  display: none; 
+                  align-items: center; 
+                  justify-content: center;
+                  overflow: hidden;
+                  opacity: 0.85;
+                ">
+                  <img id="mockupDesign" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                </div>
+              </div>
             </div>
             <div id="imageGallery" style="display:flex; gap:1rem; margin-top:1.5rem; flex-wrap: wrap;">
               ${initialImages.map(img => `
@@ -343,6 +372,31 @@ async function loadProduct() {
                 `).join("")}
               </div>
             </div>
+
+            <!-- CUSTOM DESIGN UPLOAD -->
+            ${showUploadBox ? `
+              <div class="variant-selector" style="background: rgba(79, 70, 229, 0.05); padding: 1.5rem; border-radius: var(--border-radius-md); border: 1px dashed var(--accent-color); margin-bottom: 2rem;">
+                <label class="variant-label" style="color: var(--accent-color); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                  <span>✨</span> Customize Your Product / Upload Photo
+                </label>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Upload your photo, logo, or design to print on this item. Preview it live on the product!</p>
+                <div style="display: flex; flex-direction: column; gap: 1rem; align-items: center;">
+                  <button class="btn btn-secondary" onclick="document.getElementById('customDesignInput').click()" style="width: 100%; height: 48px; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 700;">
+                    <span>📤</span> Upload Design Photo
+                  </button>
+                  <input type="file" id="customDesignInput" accept="image/*" style="display: none;" onchange="handleDesignUpload(this)">
+                  
+                  <div id="designPreviewContainer" style="display: none; align-items: center; gap: 1rem; width: 100%; background: var(--surface-color); padding: 0.75rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+                    <img id="designPreviewImg" style="width: 50px; height: 50px; object-fit: cover; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+                    <div style="flex: 1; overflow: hidden;">
+                      <p style="font-size: 0.8rem; font-weight: 700; margin: 0; white-space: nowrap; text-overflow: ellipsis; color: var(--text-primary);" id="designFileName">design.png</p>
+                      <p style="font-size: 0.7rem; color: var(--text-muted); margin: 0;">Ready to print</p>
+                    </div>
+                    <button onclick="removeUploadedDesign()" style="background: none; border: none; color: #ef4444; font-size: 1.25rem; cursor: pointer; padding: 0 0.5rem; line-height: 1;">×</button>
+                  </div>
+                </div>
+              </div>
+            ` : ''}
 
             <div class="variant-selector">
               <label class="variant-label">Quantity</label>
@@ -583,12 +637,90 @@ function updateQuantity(change) {
 function handleAddToCart() {
   if(!currentProduct) return;
   
+  const catLower = (currentProduct.category || "").toLowerCase();
+  const nameLower = (currentProduct.name || "").toLowerCase();
+  const isStrictCustom = catLower.includes("custom") || nameLower.includes("custom");
+
+  if (isStrictCustom && !customDesignBase64) {
+    alert("Please upload your design or photo first to customize this T-shirt.");
+    return;
+  }
+  
   for(let i=0; i < selectedQuantity; i++) {
-    addToCart(currentProduct, selectedSize, selectedColor, selectedVariantImage, selectedPrice);
+    addToCart(currentProduct, selectedSize, selectedColor, selectedVariantImage, selectedPrice, customDesignBase64);
   }
   
   showToast("Added to cart!");
   updateCartCount();
+}
+
+function handleDesignUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  document.getElementById("designFileName").innerText = file.name;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const maxWidth = 800;
+      const maxHeight = 800;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round(height * (maxWidth / width));
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round(width * (maxHeight / height));
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const base64Str = canvas.toDataURL('image/jpeg', 0.8);
+      customDesignBase64 = base64Str;
+
+      // Update previews
+      document.getElementById("designPreviewImg").src = base64Str;
+      document.getElementById("designPreviewContainer").style.display = "flex";
+      
+      const mockupOverlay = document.getElementById("mockupOverlay");
+      const mockupDesign = document.getElementById("mockupDesign");
+      if (mockupOverlay && mockupDesign) {
+        mockupDesign.src = base64Str;
+        mockupOverlay.style.display = "flex";
+      }
+      
+      showToast("Design uploaded successfully!");
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeUploadedDesign() {
+  customDesignBase64 = null;
+  document.getElementById("customDesignInput").value = "";
+  document.getElementById("designPreviewContainer").style.display = "none";
+  
+  const mockupOverlay = document.getElementById("mockupOverlay");
+  const mockupDesign = document.getElementById("mockupDesign");
+  if (mockupOverlay && mockupDesign) {
+    mockupDesign.src = "";
+    mockupOverlay.style.display = "none";
+  }
+  
+  showToast("Design removed.");
 }
 
 function addToWishlist() {

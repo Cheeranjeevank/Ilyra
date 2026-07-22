@@ -25,7 +25,8 @@ async function loadProducts() {
   }
   
   function viewProduct(id){
-    window.location.href = "product.html?id=" + id;
-  }
+  localStorage.setItem("selectedProductId", id);
+  window.location.href = "product.html?id=" + id;
+}
   
   loadProducts();

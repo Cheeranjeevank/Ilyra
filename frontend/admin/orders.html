@@ -146,8 +146,11 @@
 
 <script src="../js/app.js?v=2"></script>
 <script>
+const userData = JSON.parse(localStorage.getItem("user"));
 const token = localStorage.getItem("token");
-if (!token) window.location.href = "admin-login.html";
+if (!token || !userData || userData.role !== "admin") {
+  window.location.href = "admin-login.html";
+}
 
 let orders = [];
 
@@ -175,16 +178,39 @@ function renderOrders(list = orders) {
     const isPaid = o.payment_status === "paid";
     const paymentStatus = isPaid ? "Successful" : "Pending";
     const paymentClass = isPaid ? "status-successful" : "status-pending";
-    const itemsHtml = o.items ? o.items.map(item => `
-      <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(79, 70, 229, 0.05); padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid rgba(79, 70, 229, 0.2); margin-bottom: 0.4rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
-        <div style="display: flex; align-items: center; gap: 0.8rem;">
-          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-color);"></div>
-          <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); letter-spacing: 0.02em;">${item.name}</span>
-          <span style="font-size: 0.75rem; background: var(--accent-color); color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-weight: 600;">Qty: ${item.quantity}</span>
+    const itemsHtml = o.items ? o.items.map(item => {
+      const hasCustom = !!item.custom_image;
+      return `
+      <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(79, 70, 229, 0.05); padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid rgba(79, 70, 229, 0.2); margin-bottom: 0.4rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); gap: 1rem; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 0.8rem; flex: 1; min-width: 200px;">
+          <div style="position: relative; width: 40px; height: 40px; flex-shrink: 0;">
+            <img src="${item.image || 'https://via.placeholder.com/40'}" style="width: 40px; height: 40px; border-radius: 4px; object-fit: cover;">
+            ${hasCustom ? `
+              <img src="${item.custom_image}" style="position: absolute; bottom: -2px; right: -2px; width: 18px; height: 18px; border-radius: 3px; object-fit: cover; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); cursor: pointer;" onclick="window.open('${item.custom_image}', '_blank')" title="View custom design image">
+            ` : ''}
+          </div>
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); letter-spacing: 0.02em;">${item.name}</span>
+            <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.2rem;">
+              <span style="font-size: 0.7rem; background: var(--accent-color); color: white; padding: 0.1rem 0.4rem; border-radius: 10px; font-weight: 600;">Qty: ${item.quantity}</span>
+              ${hasCustom ? `
+                <span style="font-size: 0.7rem; background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 0.1rem 0.4rem; border-radius: 10px; font-weight: 700;">Customized</span>
+              ` : ''}
+            </div>
+          </div>
         </div>
-        <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-primary);">₹${item.price}</div>
+        
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-primary);">₹${item.price}</div>
+          ${hasCustom ? `
+            <button class="btn btn-secondary" style="width: auto; padding: 0.3rem 0.6rem; font-size: 0.75rem; border-color: var(--accent-color); color: var(--accent-color); height: auto; display: flex; align-items: center; gap: 0.25rem;" onclick="downloadDesign('${o.id}', '${item.id || item.name}', '${item.custom_image}')">
+              📥 Download Design
+            </button>
+          ` : ''}
+        </div>
       </div>
-    `).join("") : '<div style="font-size: 0.85rem; color: var(--text-muted); padding: 0.6rem; font-style: italic;">No items found</div>';
+      `;
+    }).join("") : '<div style="font-size: 0.85rem; color: var(--text-muted); padding: 0.6rem; font-style: italic;">No items found</div>';
 
     return `
     <tr class="fade-in">
@@ -291,6 +317,17 @@ function filterOrders() {
 function logout() {
   localStorage.removeItem("token");
   window.location.href = "admin-login.html";
+}
+
+function downloadDesign(orderId, name, base64Data) {
+  if (!base64Data) return;
+  const link = document.createElement("a");
+  link.href = base64Data;
+  link.download = `order_${orderId}_item_${name.replace(/[^a-zA-Z0-9]/g, "_")}_design.jpg`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast("Design download started!");
 }
 
 loadOrders();

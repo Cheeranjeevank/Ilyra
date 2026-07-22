@@ -118,10 +118,19 @@ function loadSummary() {
     total += itemTotal;
     return `
       <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-        <img src="${item.image}" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover;">
-        <div style="flex: 1;">
-          <p style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem;">${item.name}</p>
-          <p style="font-size: 0.75rem; color: var(--text-muted);">Qty: ${item.quantity}</p>
+        <div style="position: relative; width: 50px; height: 50px; flex-shrink: 0;">
+          <img src="${item.image}" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover;">
+          ${item.custom_image ? `
+            <img src="${item.custom_image}" style="position: absolute; bottom: -2px; right: -2px; width: 22px; height: 22px; border-radius: 4px; object-fit: cover; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);" title="Custom Design Image">
+          ` : ''}
+        </div>
+        <div style="flex: 1; overflow: hidden;">
+          <p style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${item.name}</p>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">Qty: ${item.quantity}</p>
+            ${item.size ? `<span style="font-size: 0.7rem; background: var(--surface-hover); padding: 0.1rem 0.3rem; border-radius: 3px; font-weight: 600; color: var(--text-secondary);">Size: ${item.size}</span>` : ''}
+            ${item.color ? `<span style="font-size: 0.7rem; background: var(--surface-hover); padding: 0.1rem 0.3rem; border-radius: 3px; font-weight: 600; color: var(--text-secondary);">Color: ${item.color}</span>` : ''}
+          </div>
         </div>
         <p style="font-size: 0.875rem; font-weight: 600;">₹${itemTotal}</p>
       </div>
